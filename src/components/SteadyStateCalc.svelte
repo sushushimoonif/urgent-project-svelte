@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { invoke } from '@tauri-apps/api/tauri';
-
   let isCalculating = $state(false);
   let showResults = $state(true); // 页面加载时立即显示结果
 
@@ -68,20 +66,6 @@
     { name: "Cfg", title: "喷管推力损失系数/Cfg", range: "(0.7~1.0)", value: 0.0 }
   ]);
 
-  // 根据英文名获取参数值
-  function getParameterValue(name: string): string {
-    const param = dataIN.find(p => p.name === name);
-    return param ? param.data : '0';
-  }
-
-  // 更新参数值
-  function updateParameterValue(name: string, value: string) {
-    const param = dataIN.find(p => p.name === name);
-    if (param) {
-      param.data = value;
-    }
-  }
-
   // 更新输出参数的值 - 根据后端返回的dataOUT更新
   function updateOutputParameters(dataOUT: Array<{name: string, data: string}>) {
     dataOUT.forEach(outParam => {
@@ -123,27 +107,15 @@
     return dataIN;
   }
 
-  // 调用后端计算函数
-  async function callSteadyStateCalculation(dataIN: Array<{name: string, data: string}>) {
-    try {
-      // 使用 Tauri invoke 调用后端的 steady_state_calculation 函数
-      const result = await invoke("steady_state_calculation", { dataIN });
-      return result;
-    } catch (error) {
-      console.error('Tauri invoke 调用失败:', error);
-      // 返回模拟数据作为fallback
-      return generateMockDataOUT();
-    }
-  }
-
   // 生成模拟的dataOUT数据
   function generateMockDataOUT() {
     return outputParameters.map(param => ({
       name: param.name,
-      data: (param.value * (1 + (Math.random() - 0.5) * 0.1)).toString() // ±5% 变化
+      data: (Math.random() * 100 + 50).toFixed(2) // 生成50-150之间的随机数
     }));
   }
 
+  // 简化的计算函数 - 直接使用模拟数据
   async function handleCalculate() {
     isCalculating = true;
     
@@ -152,28 +124,19 @@
       const updatedDataIN = buildCalculationParams();
       console.log('发送到后端的 dataIN:', updatedDataIN);
       
-      // 调用后端计算函数
-      const dataOUT = await callSteadyStateCalculation(updatedDataIN);
-      console.log('后端返回的 dataOUT:', dataOUT);
+      // 模拟网络延迟
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // 验证dataOUT格式
-      if (Array.isArray(dataOUT) && dataOUT.length > 0 && 
-          dataOUT.every(item => item.name && item.data !== undefined)) {
-        // 根据dataOUT更新输出参数
-        updateOutputParameters(dataOUT);
-        console.log('输出参数已更新');
-      } else {
-        // 如果后端返回的数据不符合预期，使用模拟数据
-        console.warn('后端返回数据格式不正确，使用模拟数据');
-        const mockDataOUT = generateMockDataOUT();
-        updateOutputParameters(mockDataOUT);
-      }
+      // 生成模拟的dataOUT
+      const dataOUT = generateMockDataOUT();
+      console.log('模拟的 dataOUT:', dataOUT);
+      
+      // 根据dataOUT更新输出参数
+      updateOutputParameters(dataOUT);
+      console.log('输出参数已更新');
       
     } catch (error) {
       console.error('计算过程中出错:', error);
-      // 出错时使用模拟数据
-      const mockDataOUT = generateMockDataOUT();
-      updateOutputParameters(mockDataOUT);
     } finally {
       isCalculating = false;
     }
