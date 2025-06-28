@@ -20,39 +20,39 @@
   let selectedMode = $state('作战');
   let selectedEnvironment = $state('地面');
 
-  // 31个仿真输出参数 - 根据PDF文件中的表格数据
+  // 31个仿真输出参数 - 根据图片中的表格数据更正
   let outputParameters = $state([
     { name: "低压轴换算转速/N1cor", range: "(0~110)", value: 100 },
     { name: "高压轴换算转速/N2cor", range: "(0~110)", value: 100 },
-    { name: "换算流量/WTcor", range: "(0~300)", value: 245.8 },
-    { name: "发动机净推力/F", range: "(0~200000)", value: 15420.5 },
-    { name: "发动机总推力/FG", range: "(0~200000)", value: 16890.2 },
-    { name: "主喷管出口面积/A8", range: "(0~1)", value: 0.245 },
-    { name: "加力喷管出口面积/A9", range: "(0~1)", value: 0.312 },
-    { name: "风扇出口面积/A16", range: "(0~1)", value: 0.156 },
-    { name: "高压压气机出口总温/T3", range: "(0~1500)", value: 658.4 },
-    { name: "高压涡轮进口总温/T41", range: "(0~2000)", value: 1245.6 },
-    { name: "低压涡轮进口总温/T43", range: "(0~2000)", value: 1156.8 },
-    { name: "风扇出口总压/P21", range: "(0~10)", value: 2.45 },
-    { name: "高压压气机出口总压/P3", range: "(0~50)", value: 12.8 },
-    { name: "高压涡轮进口总压/P41", range: "(0~50)", value: 11.2 },
-    { name: "低压涡轮进口总压/P43", range: "(0~20)", value: 3.8 },
-    { name: "低压涡轮出口总温/T6", range: "(0~1500)", value: 945.2 },
-    { name: "低压涡轮出口总压/P6", range: "(0~10)", value: 2.1 },
-    { name: "主喷管出口总压/P8", range: "(0~5)", value: 1.8 },
-    { name: "加力燃烧室出口总温/T38", range: "(0~2500)", value: 1089.5 },
-    { name: "加力喷管出口总温/T8", range: "(0~2000)", value: 856.3 },
-    { name: "主燃烧室燃油流量/Wf", range: "(0~5)", value: 2.456 },
-    { name: "加力燃烧室燃油流量/Wfab", range: "(0~10)", value: 1.156 },
-    { name: "发动机进口总流量/W0", range: "(0~500)", value: 245.8 },
-    { name: "发动机进口净推阻力/D0", range: "(0~5000)", value: 1245.6 },
-    { name: "低压转子转速/N1", range: "(0~15000)", value: 8542.3 },
-    { name: "高压转子转速/N2", range: "(0~20000)", value: 12456.7 },
-    { name: "推重比/TWR", range: "(0~15)", value: 8.5 },
-    { name: "耗油率/SFC", range: "(0~3)", value: 0.856 },
-    { name: "发动机净马力/Pnet", range: "(0~50000)", value: 25680.4 },
-    { name: "发动机总马力/Pgross", range: "(0~60000)", value: 28950.2 },
-    { name: "循环效率/ηcycle", range: "(0~1)", value: 0.425 }
+    { name: "发动机进口换算流量/W1cor", range: "(0~300)", value: 0 },
+    { name: "发动机净推力/FG", range: "(0~180)", value: 0 },
+    { name: "发动机总推力/FG", range: "(0~180)", value: 0 },
+    { name: "发动机进口净推阻力", range: "(0~180)", value: 0 },
+    { name: "发动机总耗油量", range: "(0~37000)", value: 0 },
+    { name: "主燃烧室耗油量", range: "(0~12000)", value: 0 },
+    { name: "加力燃烧室耗油量", range: "(0~25000)", value: 0 },
+    { name: "喷管喉道面积/A8", range: "(0~0.8)", value: 0.27 },
+    { name: "喷管出口面积/A9", range: "(0~0.8)", value: 0.33 },
+    { name: "风扇出口温度/T24", range: "(0~1000)", value: 288.15 },
+    { name: "高压压气机出口温度/T3", range: "(0~1000)", value: 288.15 },
+    { name: "高压涡轮进口温度/T41", range: "(0~2000)", value: 288.15 },
+    { name: "低压涡轮进口温度/T43", range: "(0~2000)", value: 288.15 },
+    { name: "风扇出口总压/P21", range: "(0~1000000)", value: 101325 },
+    { name: "高压压气机出口总压/P3", range: "(0~4200000)", value: 101325 },
+    { name: "高压涡轮进口总压/P41", range: "(0~1000000)", value: 101325 },
+    { name: "低压涡轮进口总压/P43", range: "(0~1000000)", value: 101325 },
+    { name: "低压涡轮出口总温/T6", range: "(200~1300)", value: 288.15 },
+    { name: "喷管喉道静压/Ps8", range: "(0~500000)", value: 101325 },
+    { name: "喷管喉道总压/P8", range: "(0~500000)", value: 101325 },
+    { name: "喷管喉道静温/Ts8", range: "(0~1000)", value: 288.15 },
+    { name: "喷管喉道总温/T8", range: "(0~1000)", value: 288.15 },
+    { name: "喷管喉道气流速度/V8", range: "(0~500)", value: 0 },
+    { name: "喷管出口静压/Ps9", range: "(0~500000)", value: 288.15 },
+    { name: "喷管出口总压/P9", range: "(0~500000)", value: 101325 },
+    { name: "喷管出口静温/Ts9", range: "(0~1200)", value: 288.15 },
+    { name: "喷管出口总温/T9", range: "(0~1200)", value: 288.15 },
+    { name: "喷管出口气流速度/V9", range: "(0~500)", value: 0 },
+    { name: "喷管推力损失系数/Cfg", range: "(0.7~1.0)", value: 0 }
   ]);
 
   // 构建调用参数
@@ -162,7 +162,7 @@
           </div>
         </div>
 
-        <!-- 输入参数 - text框和单位右对齐 -->
+        <!-- 输入参数 - text框长度变两倍，和单位右对齐 -->
         <div class="flex-1 space-y-3 overflow-y-auto">
           <!-- 高度 -->
           <div class="flex items-center">
@@ -173,7 +173,7 @@
               <input
                 type="text"
                 bind:value={inputParams.height}
-                class="w-12 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                class="w-24 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
                 placeholder="0"
               />
               <span class="text-gray-400 text-xs w-4">m</span>
@@ -189,7 +189,7 @@
               <input
                 type="text"
                 bind:value={inputParams.machNumber}
-                class="w-12 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                class="w-24 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
                 placeholder="0"
               />
               <span class="text-gray-400 text-xs w-4"></span>
@@ -205,7 +205,7 @@
               <input
                 type="text"
                 bind:value={inputParams.temperature}
-                class="w-12 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                class="w-24 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
                 placeholder="0"
               />
               <span class="text-gray-400 text-xs w-4">K</span>
@@ -221,7 +221,7 @@
               <input
                 type="text"
                 bind:value={inputParams.gasFlowSystem}
-                class="w-12 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                class="w-24 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
                 placeholder="-1"
               />
               <span class="text-gray-400 text-xs w-4"></span>
@@ -237,7 +237,7 @@
               <input
                 type="text"
                 bind:value={inputParams.powerConsumption}
-                class="w-12 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                class="w-24 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
                 placeholder="0"
               />
               <span class="text-gray-400 text-xs w-4">W</span>
@@ -253,7 +253,7 @@
               <input
                 type="text"
                 bind:value={inputParams.gasCompressionRatio}
-                class="w-12 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                class="w-24 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
                 placeholder="0"
               />
               <span class="text-gray-400 text-xs w-4">%</span>
@@ -269,7 +269,7 @@
               <input
                 type="text"
                 bind:value={inputParams.oilFieldAngle}
-                class="w-12 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                class="w-24 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
                 placeholder="66"
               />
               <span class="text-gray-400 text-xs w-4">度</span>
@@ -290,7 +290,7 @@
         </div>
       </div>
 
-      <!-- 右侧参数列表 - 缩短每行宽度1/3 -->
+      <!-- 右侧参数列表 - 缩短每行上下距离1/3 -->
       <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
         {#if showResults}
           <div class="h-full flex flex-col">
@@ -300,10 +300,10 @@
                 <!-- 左列：参数1-16 -->
                 <div class="border-r border-gray-700 overflow-y-auto">
                   {#each outputParameters.slice(0, 16) as param, index}
-                    <div class="flex items-center px-2 py-2 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
+                    <div class="flex items-center px-2 py-1 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
                       <!-- 序号 -->
                       <div class="w-4 text-xs text-gray-500 font-mono flex-shrink-0 mr-1">
-                        {index + 1}
+                        {index}
                       </div>
                       <!-- 参数名称和取值范围 -->
                       <div class="flex-1 min-w-0 mr-1">
@@ -327,10 +327,10 @@
                 <!-- 右列：参数17-31 -->
                 <div class="overflow-y-auto">
                   {#each outputParameters.slice(16, 31) as param, index}
-                    <div class="flex items-center px-2 py-2 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
+                    <div class="flex items-center px-2 py-1 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
                       <!-- 序号 -->
                       <div class="w-4 text-xs text-gray-500 font-mono flex-shrink-0 mr-1">
-                        {index + 17}
+                        {index + 16}
                       </div>
                       <!-- 参数名称和取值范围 -->
                       <div class="flex-1 min-w-0 mr-1">
