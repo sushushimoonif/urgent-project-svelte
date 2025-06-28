@@ -82,10 +82,10 @@
     return updatedParameters;
   }
 
-  // 将31个参数分成两组：左侧15个，右侧16个
+  // 将31个参数分成两列：左侧16个，右侧15个
   function splitParametersIntoColumns(parameters: Array<{name: string, range: string, value: number}>) {
-    const leftColumn = parameters.slice(0, 15);
-    const rightColumn = parameters.slice(15, 31);
+    const leftColumn = parameters.slice(0, 16);
+    const rightColumn = parameters.slice(16, 31);
     
     return { leftColumn, rightColumn };
   }
@@ -117,23 +117,23 @@
   const columnResults = $derived(splitParametersIntoColumns(outputParameters));
 </script>
 
-<div class="min-h-[calc(100vh-120px)] bg-gray-900 p-4 sm:p-6 lg:p-8">
-  <div class="w-full max-w-[80%] mx-auto h-full">
-    <div class="flex flex-col lg:flex-row h-full gap-4">
-      <!-- 左侧输入面板 -->
-      <div class="w-full lg:w-80 bg-gray-800 border border-gray-700 rounded-lg p-4 overflow-y-auto">
-        <!-- 仿真步长、作战/训练、地面/空中按钮 -->
-        <div class="mb-4 space-y-2">
+<div class="h-[calc(100vh-120px)] bg-gray-900 p-3">
+  <div class="w-full max-w-[95%] mx-auto h-full">
+    <div class="flex h-full gap-3">
+      <!-- 左侧输入面板 - 优化行间距 -->
+      <div class="w-80 bg-gray-800 border border-gray-700 rounded-lg p-3 flex flex-col">
+        <!-- 仿真步长、作战/训练、地面/空中按钮 - 紧凑布局 -->
+        <div class="mb-3 space-y-1.5">
           <!-- 仿真步长按钮 -->
-          <div class="flex">
+          <div class="flex rounded overflow-hidden">
             <button 
-              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedSimulationStep === '0.025' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+              class="flex-1 px-2 py-1.5 text-xs font-medium transition-colors {selectedSimulationStep === '0.025' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
               onclick={() => selectedSimulationStep = '0.025'}
             >
               仿真步长<br>0.025秒
             </button>
             <button 
-              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedSimulationStep === '0.0125' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+              class="flex-1 px-2 py-1.5 text-xs font-medium transition-colors {selectedSimulationStep === '0.0125' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
               onclick={() => selectedSimulationStep = '0.0125'}
             >
               仿真步长<br>0.0125秒
@@ -141,15 +141,15 @@
           </div>
           
           <!-- 作战/训练模式选择按钮 -->
-          <div class="flex">
+          <div class="flex rounded overflow-hidden">
             <button 
-              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedMode === '作战' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+              class="flex-1 px-2 py-1.5 text-xs font-medium transition-colors {selectedMode === '作战' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
               onclick={() => selectedMode = '作战'}
             >
               作战
             </button>
             <button 
-              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedMode === '训练' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+              class="flex-1 px-2 py-1.5 text-xs font-medium transition-colors {selectedMode === '训练' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
               onclick={() => selectedMode = '训练'}
             >
               训练
@@ -157,15 +157,15 @@
           </div>
           
           <!-- 地面/空中环境选择按钮 -->
-          <div class="flex">
+          <div class="flex rounded overflow-hidden">
             <button 
-              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedEnvironment === '地面' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+              class="flex-1 px-2 py-1.5 text-xs font-medium transition-colors {selectedEnvironment === '地面' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
               onclick={() => selectedEnvironment = '地面'}
             >
               地面
             </button>
             <button 
-              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedEnvironment === '空中' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+              class="flex-1 px-2 py-1.5 text-xs font-medium transition-colors {selectedEnvironment === '空中' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
               onclick={() => selectedEnvironment = '空中'}
             >
               空中
@@ -173,18 +173,18 @@
           </div>
         </div>
 
-        <!-- 输入参数 - 根据图片更新参数范围 -->
-        <div class="space-y-3">
+        <!-- 输入参数 - 优化间距和对齐 -->
+        <div class="flex-1 space-y-2">
           <!-- 高度 -->
-          <div class="flex items-center gap-3">
-            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
-              高度(0~22000)
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-300 w-28 flex-shrink-0 leading-tight">
+              高度<br><span class="text-gray-500">(0~22000)</span>
             </label>
             <div class="relative flex-1">
               <input
                 type="text"
                 bind:value={inputParams.height}
-                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent pr-6"
+                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent hover:border-gray-500 transition-colors pr-6"
                 placeholder="0"
               />
               <span class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs">m</span>
@@ -192,59 +192,57 @@
           </div>
 
           <!-- 马赫数 -->
-          <div class="flex items-center gap-3">
-            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
-              马赫数(0~2.5)
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-300 w-28 flex-shrink-0 leading-tight">
+              马赫数<br><span class="text-gray-500">(0~2.5)</span>
             </label>
             <input
               type="text"
               bind:value={inputParams.machNumber}
-              class="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+              class="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent hover:border-gray-500 transition-colors"
               placeholder="0"
             />
           </div>
 
           <!-- 温度修正 -->
-          <div class="flex items-center gap-3">
-            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
-              温度修正(0~xx)
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-300 w-28 flex-shrink-0 leading-tight">
+              温度修正<br><span class="text-gray-500">(0~xx)</span>
             </label>
             <div class="relative flex-1">
               <input
                 type="text"
                 bind:value={inputParams.temperature}
-                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent pr-12"
+                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent hover:border-gray-500 transition-colors pr-12"
                 placeholder="0"
               />
-              <span class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs">开尔文</span>
+              <span class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs">K</span>
             </div>
           </div>
 
           <!-- 进气道总压恢复系数 -->
-          <div class="flex items-center gap-3">
-            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
-              进气道总压恢复系数(-1或0~1.1)
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-300 w-28 flex-shrink-0 leading-tight">
+              进气道总压<br><span class="text-gray-500">(-1或0~1.1)</span>
             </label>
-            <div class="relative flex-1">
-              <input
-                type="text"
-                bind:value={inputParams.gasFlowSystem}
-                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
-                placeholder="-1"
-              />
-            </div>
+            <input
+              type="text"
+              bind:value={inputParams.gasFlowSystem}
+              class="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent hover:border-gray-500 transition-colors"
+              placeholder="-1"
+            />
           </div>
 
           <!-- 功率提取 -->
-          <div class="flex items-center gap-3">
-            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
-              功率提取(0~1000000)
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-300 w-28 flex-shrink-0 leading-tight">
+              功率提取<br><span class="text-gray-500">(0~1000000)</span>
             </label>
             <div class="relative flex-1">
               <input
                 type="text"
                 bind:value={inputParams.powerConsumption}
-                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent pr-6"
+                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent hover:border-gray-500 transition-colors pr-6"
                 placeholder="0"
               />
               <span class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs">W</span>
@@ -252,15 +250,15 @@
           </div>
 
           <!-- 压气机出口座舱引气 -->
-          <div class="flex items-center gap-3">
-            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
-              压气机出口座舱引气(0~2)
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-300 w-28 flex-shrink-0 leading-tight">
+              压气机引气<br><span class="text-gray-500">(0~2)</span>
             </label>
             <div class="relative flex-1">
               <input
                 type="text"
                 bind:value={inputParams.gasCompressionRatio}
-                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent pr-6"
+                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent hover:border-gray-500 transition-colors pr-6"
                 placeholder="0"
               />
               <span class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs">%</span>
@@ -268,15 +266,15 @@
           </div>
 
           <!-- 油门杆角度 -->
-          <div class="flex items-center gap-3">
-            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
-              油门杆角度PLA(0~115)
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-300 w-28 flex-shrink-0 leading-tight">
+              油门杆角度<br><span class="text-gray-500">(0~115)</span>
             </label>
             <div class="relative flex-1">
               <input
                 type="text"
                 bind:value={inputParams.oilFieldAngle}
-                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent pr-8"
+                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent hover:border-gray-500 transition-colors pr-8"
                 placeholder="66"
               />
               <span class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs">度</span>
@@ -285,9 +283,9 @@
         </div>
 
         <!-- 计算按钮 -->
-        <div class="mt-4">
+        <div class="mt-3">
           <button
-            class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-gray-800"
             onclick={handleCalculate}
             disabled={isCalculating}
           >
@@ -297,117 +295,99 @@
         </div>
       </div>
 
-      <!-- 右侧参数组区域 - 调整为与左侧计算栏等高并排布局 -->
-      <div class="flex-1 flex gap-4">
-        <!-- 参数组A - 宽度缩减为50% -->
-        <div class="w-1/2 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
-          {#if showResults}
-            <div class="h-full flex flex-col">
-              <!-- 参数组A标题栏 -->
-              <div class="bg-gray-700 px-3 py-2 border-b border-gray-600 flex-shrink-0">
-                <h3 class="text-sm font-medium text-gray-200 flex items-center gap-2">
-                  <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                  </svg>
-                  参数组 A (1-15)
-                </h3>
-              </div>
+      <!-- 右侧参数列表区域 - 无缝合并布局 -->
+      <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+        {#if showResults}
+          <div class="h-full flex flex-col">
+            <!-- 统一标题栏 -->
+            <div class="bg-gray-700 px-4 py-2 border-b border-gray-600 flex-shrink-0">
+              <h3 class="text-sm font-medium text-gray-200 flex items-center gap-2">
+                <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+                仿真输出参数 (共31项)
+              </h3>
+            </div>
 
-              <!-- 参数组A内容 -->
-              <div class="flex-1 overflow-y-auto">
-                <div class="space-y-0">
-                  {#each columnResults.leftColumn as param, index}
-                    <div class="flex items-center px-3 py-2 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
-                      <!-- 序号 -->
-                      <div class="w-6 text-xs text-gray-500 font-mono flex-shrink-0">
-                        {index + 1}
-                      </div>
-                      <!-- 参数信息 -->
-                      <div class="flex-1 min-w-0 mx-2">
-                        <div class="text-xs text-gray-300 font-medium truncate" title={param.name}>
-                          {param.name}
+            <!-- 参数列表内容 - 双列网格布局 -->
+            <div class="flex-1 overflow-hidden">
+              <div class="h-full grid grid-cols-2 gap-0">
+                <!-- 左列 (1-16) -->
+                <div class="border-r border-gray-700 overflow-y-auto">
+                  <div class="space-y-0">
+                    {#each columnResults.leftColumn as param, index}
+                      <div class="flex items-center px-3 py-2 border-b border-gray-700 hover:bg-gray-750 transition-colors group {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
+                        <!-- 序号 -->
+                        <div class="w-6 text-xs text-gray-500 font-mono flex-shrink-0">
+                          {index + 1}
                         </div>
-                        <div class="text-xs text-gray-500 mt-0.5">
-                          {param.range}
+                        <!-- 参数信息 -->
+                        <div class="flex-1 min-w-0 mx-2">
+                          <div class="text-xs text-gray-300 font-medium truncate group-hover:text-white transition-colors" title={param.name}>
+                            {param.name}
+                          </div>
+                          <div class="text-xs text-gray-500 mt-0.5">
+                            {param.range}
+                          </div>
+                        </div>
+                        <!-- 数值 -->
+                        <div class="text-xs text-white font-mono bg-gray-700 group-hover:bg-gray-600 px-2 py-1 rounded min-w-[70px] text-center flex-shrink-0 transition-colors">
+                          {param.value.toFixed(3)}
                         </div>
                       </div>
-                      <!-- 数值 -->
-                      <div class="text-xs text-white font-mono bg-gray-700 px-2 py-1 rounded min-w-[60px] text-center flex-shrink-0">
-                        {param.value.toFixed(3)}
-                      </div>
-                    </div>
-                  {/each}
+                    {/each}
+                  </div>
                 </div>
-              </div>
 
-              <!-- 参数组A状态栏 -->
-              <div class="bg-gray-750 px-3 py-2 border-t border-gray-600 flex-shrink-0">
-                <div class="flex justify-between items-center text-xs text-gray-400">
-                  <span>参数组A</span>
-                  <div class="flex items-center gap-2">
-                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span>实时</span>
+                <!-- 右列 (17-31) -->
+                <div class="overflow-y-auto">
+                  <div class="space-y-0">
+                    {#each columnResults.rightColumn as param, index}
+                      <div class="flex items-center px-3 py-2 border-b border-gray-700 hover:bg-gray-750 transition-colors group {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
+                        <!-- 序号 -->
+                        <div class="w-6 text-xs text-gray-500 font-mono flex-shrink-0">
+                          {index + 17}
+                        </div>
+                        <!-- 参数信息 -->
+                        <div class="flex-1 min-w-0 mx-2">
+                          <div class="text-xs text-gray-300 font-medium truncate group-hover:text-white transition-colors" title={param.name}>
+                            {param.name}
+                          </div>
+                          <div class="text-xs text-gray-500 mt-0.5">
+                            {param.range}
+                          </div>
+                        </div>
+                        <!-- 数值 -->
+                        <div class="text-xs text-white font-mono bg-gray-700 group-hover:bg-gray-600 px-2 py-1 rounded min-w-[70px] text-center flex-shrink-0 transition-colors">
+                          {param.value.toFixed(3)}
+                        </div>
+                      </div>
+                    {/each}
                   </div>
                 </div>
               </div>
             </div>
-          {/if}
-        </div>
 
-        <!-- 参数组B - 紧邻参数组A右侧 -->
-        <div class="w-1/2 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
-          {#if showResults}
-            <div class="h-full flex flex-col">
-              <!-- 参数组B标题栏 -->
-              <div class="bg-gray-700 px-3 py-2 border-b border-gray-600 flex-shrink-0">
-                <h3 class="text-sm font-medium text-gray-200 flex items-center gap-2">
-                  <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                  </svg>
-                  参数组 B (16-31)
-                </h3>
-              </div>
-
-              <!-- 参数组B内容 -->
-              <div class="flex-1 overflow-y-auto">
-                <div class="space-y-0">
-                  {#each columnResults.rightColumn as param, index}
-                    <div class="flex items-center px-3 py-2 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
-                      <!-- 序号 -->
-                      <div class="w-6 text-xs text-gray-500 font-mono flex-shrink-0">
-                        {index + 16}
-                      </div>
-                      <!-- 参数信息 -->
-                      <div class="flex-1 min-w-0 mx-2">
-                        <div class="text-xs text-gray-300 font-medium truncate" title={param.name}>
-                          {param.name}
-                        </div>
-                        <div class="text-xs text-gray-500 mt-0.5">
-                          {param.range}
-                        </div>
-                      </div>
-                      <!-- 数值 -->
-                      <div class="text-xs text-white font-mono bg-gray-700 px-2 py-1 rounded min-w-[60px] text-center flex-shrink-0">
-                        {param.value.toFixed(3)}
-                      </div>
-                    </div>
-                  {/each}
-                </div>
-              </div>
-
-              <!-- 参数组B状态栏 -->
-              <div class="bg-gray-750 px-3 py-2 border-t border-gray-600 flex-shrink-0">
-                <div class="flex justify-between items-center text-xs text-gray-400">
-                  <span>参数组B</span>
+            <!-- 统一状态栏 -->
+            <div class="bg-gray-750 px-4 py-2 border-t border-gray-600 flex-shrink-0">
+              <div class="flex justify-between items-center text-xs text-gray-400">
+                <span>共 {outputParameters.length} 个参数</span>
+                <div class="flex items-center gap-4">
                   <div class="flex items-center gap-2">
                     <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                    <span>实时</span>
+                    <span>实时更新</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <svg class="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                    </svg>
+                    <span>计算完成</span>
                   </div>
                 </div>
               </div>
             </div>
-          {/if}
-        </div>
+          </div>
+        {/if}
       </div>
     </div>
   </div>
