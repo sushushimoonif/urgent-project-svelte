@@ -109,9 +109,9 @@
     dataIN[9].data = selectedEnvironment === '地面' ? 0 : 1;
   });
 
-  // 使用$derived来计算显示数据，不修改状态
+  // 使用$derived来计算显示数据，确保返回数组
   const displayData = $derived(() => {
-    return simulationData.map((item, index) => {
+    const result = simulationData.map((item, index) => {
       const currentValue = dataIN[index]?.data ?? item.defaultValue;
       return {
         name: item.name,
@@ -121,11 +121,19 @@
         displayText: `${item.name}(${item.range}), ${currentValue}${item.unit ? ' ' + item.unit : ''}`
       };
     });
+    return result;
   });
 
-  // 分列显示数据
-  const leftColumnData = $derived(displayData.slice(0, 15));
-  const rightColumnData = $derived(displayData.slice(15, 31));
+  // 分列显示数据 - 确保displayData是数组后再调用slice
+  const leftColumnData = $derived(() => {
+    const data = displayData;
+    return Array.isArray(data) ? data.slice(0, 15) : [];
+  });
+  
+  const rightColumnData = $derived(() => {
+    const data = displayData;
+    return Array.isArray(data) ? data.slice(15, 31) : [];
+  });
 
   // 构建调用参数
   function buildCalculationParams() {
