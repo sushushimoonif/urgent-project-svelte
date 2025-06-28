@@ -82,14 +82,6 @@
     return updatedParameters;
   }
 
-  // 将31个参数分成两组：左侧15个，右侧16个
-  function splitParametersIntoColumns(parameters: Array<{name: string, range: string, value: number}>) {
-    const leftColumn = parameters.slice(0, 15);
-    const rightColumn = parameters.slice(15, 31);
-    
-    return { leftColumn, rightColumn };
-  }
-
   async function handleCalculate() {
     isCalculating = true;
     
@@ -112,16 +104,13 @@
       isCalculating = false;
     }
   }
-
-  // 获取分列显示的结果
-  const columnResults = $derived(splitParametersIntoColumns(outputParameters));
 </script>
 
-<div class="min-h-[calc(100vh-120px)] bg-gray-900 p-4 sm:p-6 lg:p-8">
-  <div class="w-full max-w-[80%] mx-auto h-full">
-    <div class="flex flex-col lg:flex-row h-full gap-4">
+<div class="h-[calc(100vh-120px)] bg-gray-900 p-4 sm:p-6 lg:p-8">
+  <div class="w-full max-w-[95%] mx-auto h-full">
+    <div class="flex h-full gap-4">
       <!-- 左侧输入面板 -->
-      <div class="w-full lg:w-80 bg-gray-800 border border-gray-700 rounded-lg p-4 overflow-y-auto">
+      <div class="w-80 bg-gray-800 border border-gray-700 rounded-lg p-4 flex flex-col">
         <!-- 仿真步长、作战/训练、地面/空中按钮 -->
         <div class="mb-4 space-y-2">
           <!-- 仿真步长按钮 -->
@@ -173,11 +162,11 @@
           </div>
         </div>
 
-        <!-- 输入参数 - 根据图片更新参数范围 -->
-        <div class="space-y-3">
+        <!-- 输入参数 -->
+        <div class="flex-1 space-y-3 overflow-y-auto">
           <!-- 高度 -->
-          <div class="flex items-center gap-3">
-            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-300 w-24 flex-shrink-0">
               高度(0~22000)
             </label>
             <div class="relative flex-1">
@@ -192,8 +181,8 @@
           </div>
 
           <!-- 马赫数 -->
-          <div class="flex items-center gap-3">
-            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-300 w-24 flex-shrink-0">
               马赫数(0~2.5)
             </label>
             <input
@@ -205,39 +194,37 @@
           </div>
 
           <!-- 温度修正 -->
-          <div class="flex items-center gap-3">
-            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-300 w-24 flex-shrink-0">
               温度修正(0~xx)
             </label>
             <div class="relative flex-1">
               <input
                 type="text"
                 bind:value={inputParams.temperature}
-                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent pr-12"
+                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent pr-8"
                 placeholder="0"
               />
-              <span class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs">开尔文</span>
+              <span class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs">K</span>
             </div>
           </div>
 
           <!-- 进气道总压恢复系数 -->
-          <div class="flex items-center gap-3">
-            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
-              进气道总压恢复系数(-1或0~1.1)
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-300 w-24 flex-shrink-0">
+              进气道(-1或0~1.1)
             </label>
-            <div class="relative flex-1">
-              <input
-                type="text"
-                bind:value={inputParams.gasFlowSystem}
-                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
-                placeholder="-1"
-              />
-            </div>
+            <input
+              type="text"
+              bind:value={inputParams.gasFlowSystem}
+              class="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+              placeholder="-1"
+            />
           </div>
 
           <!-- 功率提取 -->
-          <div class="flex items-center gap-3">
-            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-300 w-24 flex-shrink-0">
               功率提取(0~1000000)
             </label>
             <div class="relative flex-1">
@@ -252,9 +239,9 @@
           </div>
 
           <!-- 压气机出口座舱引气 -->
-          <div class="flex items-center gap-3">
-            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
-              压气机出口座舱引气(0~2)
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-300 w-24 flex-shrink-0">
+              压气机引气(0~2)
             </label>
             <div class="relative flex-1">
               <input
@@ -268,9 +255,9 @@
           </div>
 
           <!-- 油门杆角度 -->
-          <div class="flex items-center gap-3">
-            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
-              油门杆角度PLA(0~115)
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-gray-300 w-24 flex-shrink-0">
+              油门角度(0~115)
             </label>
             <div class="relative flex-1">
               <input
@@ -297,26 +284,16 @@
         </div>
       </div>
 
-      <!-- 右侧参数组区域 - 调整为与左侧计算栏等高并排布局 -->
-      <div class="flex-1 flex gap-4">
-        <!-- 参数组A - 宽度缩减为50% -->
-        <div class="w-1/2 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
-          {#if showResults}
-            <div class="h-full flex flex-col">
-              <!-- 参数组A标题栏 -->
-              <div class="bg-gray-700 px-3 py-2 border-b border-gray-600 flex-shrink-0">
-                <h3 class="text-sm font-medium text-gray-200 flex items-center gap-2">
-                  <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                  </svg>
-                  参数组 A (1-15)
-                </h3>
-              </div>
-
-              <!-- 参数组A内容 -->
-              <div class="flex-1 overflow-y-auto">
-                <div class="space-y-0">
-                  {#each columnResults.leftColumn as param, index}
+      <!-- 右侧参数列表 - 合并为一个无缝列表 -->
+      <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+        {#if showResults}
+          <div class="h-full flex flex-col">
+            <!-- 参数列表内容 - 无标题栏 -->
+            <div class="flex-1 overflow-hidden">
+              <div class="h-full grid grid-cols-2 gap-0">
+                <!-- 左列：参数1-16 -->
+                <div class="border-r border-gray-700 overflow-y-auto">
+                  {#each outputParameters.slice(0, 16) as param, index}
                     <div class="flex items-center px-3 py-2 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
                       <!-- 序号 -->
                       <div class="w-6 text-xs text-gray-500 font-mono flex-shrink-0">
@@ -332,50 +309,20 @@
                         </div>
                       </div>
                       <!-- 数值 -->
-                      <div class="text-xs text-white font-mono bg-gray-700 px-2 py-1 rounded min-w-[60px] text-center flex-shrink-0">
-                        {param.value.toFixed(3)}
+                      <div class="text-xs text-white font-mono bg-gray-700 px-2 py-1 rounded min-w-[50px] text-center flex-shrink-0">
+                        {param.value.toFixed(2)}
                       </div>
                     </div>
                   {/each}
                 </div>
-              </div>
 
-              <!-- 参数组A状态栏 -->
-              <div class="bg-gray-750 px-3 py-2 border-t border-gray-600 flex-shrink-0">
-                <div class="flex justify-between items-center text-xs text-gray-400">
-                  <span>参数组A</span>
-                  <div class="flex items-center gap-2">
-                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span>实时</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          {/if}
-        </div>
-
-        <!-- 参数组B - 紧邻参数组A右侧 -->
-        <div class="w-1/2 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
-          {#if showResults}
-            <div class="h-full flex flex-col">
-              <!-- 参数组B标题栏 -->
-              <div class="bg-gray-700 px-3 py-2 border-b border-gray-600 flex-shrink-0">
-                <h3 class="text-sm font-medium text-gray-200 flex items-center gap-2">
-                  <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                  </svg>
-                  参数组 B (16-31)
-                </h3>
-              </div>
-
-              <!-- 参数组B内容 -->
-              <div class="flex-1 overflow-y-auto">
-                <div class="space-y-0">
-                  {#each columnResults.rightColumn as param, index}
+                <!-- 右列：参数17-31 -->
+                <div class="overflow-y-auto">
+                  {#each outputParameters.slice(16, 31) as param, index}
                     <div class="flex items-center px-3 py-2 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
                       <!-- 序号 -->
                       <div class="w-6 text-xs text-gray-500 font-mono flex-shrink-0">
-                        {index + 16}
+                        {index + 17}
                       </div>
                       <!-- 参数信息 -->
                       <div class="flex-1 min-w-0 mx-2">
@@ -387,27 +334,27 @@
                         </div>
                       </div>
                       <!-- 数值 -->
-                      <div class="text-xs text-white font-mono bg-gray-700 px-2 py-1 rounded min-w-[60px] text-center flex-shrink-0">
-                        {param.value.toFixed(3)}
+                      <div class="text-xs text-white font-mono bg-gray-700 px-2 py-1 rounded min-w-[50px] text-center flex-shrink-0">
+                        {param.value.toFixed(2)}
                       </div>
                     </div>
                   {/each}
                 </div>
               </div>
+            </div>
 
-              <!-- 参数组B状态栏 -->
-              <div class="bg-gray-750 px-3 py-2 border-t border-gray-600 flex-shrink-0">
-                <div class="flex justify-between items-center text-xs text-gray-400">
-                  <span>参数组B</span>
-                  <div class="flex items-center gap-2">
-                    <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                    <span>实时</span>
-                  </div>
+            <!-- 底部状态栏 -->
+            <div class="bg-gray-750 px-3 py-2 border-t border-gray-600 flex-shrink-0">
+              <div class="flex justify-between items-center text-xs text-gray-400">
+                <span>共 {outputParameters.length} 个参数</span>
+                <div class="flex items-center gap-2">
+                  <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span>实时更新</span>
                 </div>
               </div>
             </div>
-          {/if}
-        </div>
+          </div>
+        {/if}
       </div>
     </div>
   </div>
