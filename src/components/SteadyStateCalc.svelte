@@ -106,279 +106,259 @@
   }
 </script>
 
-<!-- 使用全屏高度的flex布局 -->
-<div class="min-h-screen bg-gray-900 flex flex-col">
-  <!-- 主要内容区域 -->
-  <div class="flex-1 p-4 sm:p-6 lg:p-8">
-    <div class="h-full max-w-full mx-auto">
-      <!-- 使用Grid布局实现响应式设计 -->
-      <div class="grid grid-cols-1 xl:grid-cols-[320px_1fr] gap-4 h-full">
-        
-        <!-- 左侧控制面板 - 固定宽度320px -->
-        <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 flex flex-col h-full xl:h-auto">
-          <!-- 仿真步长、作战/训练、地面/空中按钮 -->
-          <div class="mb-4 space-y-2 flex-shrink-0">
-            <!-- 仿真步长按钮 -->
-            <div class="flex">
-              <button 
-                class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedSimulationStep === '0.025' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-                onclick={() => selectedSimulationStep = '0.025'}
-              >
-                仿真步长<br>0.025秒
-              </button>
-              <button 
-                class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedSimulationStep === '0.0125' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-                onclick={() => selectedSimulationStep = '0.0125'}
-              >
-                仿真步长<br>0.0125秒
-              </button>
-            </div>
-            
-            <!-- 作战/训练模式选择按钮 -->
-            <div class="flex">
-              <button 
-                class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedMode === '作战' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-                onclick={() => selectedMode = '作战'}
-              >
-                作战
-              </button>
-              <button 
-                class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedMode === '训练' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-                onclick={() => selectedMode = '训练'}
-              >
-                训练
-              </button>
-            </div>
-            
-            <!-- 地面/空中环境选择按钮 -->
-            <div class="flex">
-              <button 
-                class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedEnvironment === '地面' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-                onclick={() => selectedEnvironment = '地面'}
-              >
-                地面
-              </button>
-              <button 
-                class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedEnvironment === '空中' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-                onclick={() => selectedEnvironment = '空中'}
-              >
-                空中
-              </button>
-            </div>
-          </div>
-
-          <!-- 输入参数区域 - 可滚动 -->
-          <div class="flex-1 space-y-3 overflow-y-auto min-h-0">
-            <!-- 高度 -->
-            <div class="flex items-center gap-3">
-              <label class="text-xs text-gray-300 w-32 flex-shrink-0">
-                高度(0~22000)
-              </label>
-              <div class="relative w-16 flex-shrink-0">
-                <input
-                  type="text"
-                  bind:value={inputParams.height}
-                  class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="0"
-                />
-              </div>
-              <span class="text-gray-400 text-xs flex-shrink-0">m</span>
-            </div>
-
-            <!-- 马赫数 -->
-            <div class="flex items-center gap-3">
-              <label class="text-xs text-gray-300 w-32 flex-shrink-0">
-                马赫数(0~2.5)
-              </label>
-              <div class="relative w-16 flex-shrink-0">
-                <input
-                  type="text"
-                  bind:value={inputParams.machNumber}
-                  class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="0"
-                />
-              </div>
-            </div>
-
-            <!-- 温度修正 -->
-            <div class="flex items-center gap-3">
-              <label class="text-xs text-gray-300 w-32 flex-shrink-0">
-                温度修正(0~xx)
-              </label>
-              <div class="relative w-16 flex-shrink-0">
-                <input
-                  type="text"
-                  bind:value={inputParams.temperature}
-                  class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="0"
-                />
-              </div>
-              <span class="text-gray-400 text-xs flex-shrink-0">K</span>
-            </div>
-
-            <!-- 进气道总压恢复系数 -->
-            <div class="flex items-center gap-3">
-              <label class="text-xs text-gray-300 w-32 flex-shrink-0">
-                进气道(-1或0~1.1)
-              </label>
-              <div class="relative w-16 flex-shrink-0">
-                <input
-                  type="text"
-                  bind:value={inputParams.gasFlowSystem}
-                  class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="-1"
-                />
-              </div>
-            </div>
-
-            <!-- 功率提取 -->
-            <div class="flex items-center gap-3">
-              <label class="text-xs text-gray-300 w-32 flex-shrink-0">
-                功率提取(0~1000000)
-              </label>
-              <div class="relative w-16 flex-shrink-0">
-                <input
-                  type="text"
-                  bind:value={inputParams.powerConsumption}
-                  class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="0"
-                />
-              </div>
-              <span class="text-gray-400 text-xs flex-shrink-0">W</span>
-            </div>
-
-            <!-- 压气机出口座舱引气 -->
-            <div class="flex items-center gap-3">
-              <label class="text-xs text-gray-300 w-32 flex-shrink-0">
-                压气机引气(0~2)
-              </label>
-              <div class="relative w-16 flex-shrink-0">
-                <input
-                  type="text"
-                  bind:value={inputParams.gasCompressionRatio}
-                  class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="0"
-                />
-              </div>
-              <span class="text-gray-400 text-xs flex-shrink-0">%</span>
-            </div>
-
-            <!-- 油门杆角度 -->
-            <div class="flex items-center gap-3">
-              <label class="text-xs text-gray-300 w-32 flex-shrink-0">
-                油门角度(0~115)
-              </label>
-              <div class="relative w-16 flex-shrink-0">
-                <input
-                  type="text"
-                  bind:value={inputParams.oilFieldAngle}
-                  class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="66"
-                />
-              </div>
-              <span class="text-gray-400 text-xs flex-shrink-0">度</span>
-            </div>
-          </div>
-
-          <!-- 计算按钮 -->
-          <div class="mt-4 flex-shrink-0">
-            <button
-              class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              onclick={handleCalculate}
-              disabled={isCalculating}
+<div class="h-[calc(100vh-120px)] bg-gray-900 p-4 sm:p-6 lg:p-8">
+  <div class="w-full max-w-[95%] mx-auto h-full">
+    <div class="flex h-full gap-4">
+      <!-- 左侧输入面板 -->
+      <div class="w-80 bg-gray-800 border border-gray-700 rounded-lg p-4 flex flex-col">
+        <!-- 仿真步长、作战/训练、地面/空中按钮 -->
+        <div class="mb-4 space-y-2">
+          <!-- 仿真步长按钮 -->
+          <div class="flex">
+            <button 
+              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedSimulationStep === '0.025' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+              onclick={() => selectedSimulationStep = '0.025'}
             >
-              <span class="text-sm">▶</span>
-              {isCalculating ? '计算中...' : '计算'}
+              仿真步长<br>0.025秒
+            </button>
+            <button 
+              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedSimulationStep === '0.0125' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+              onclick={() => selectedSimulationStep = '0.0125'}
+            >
+              仿真步长<br>0.0125秒
+            </button>
+          </div>
+          
+          <!-- 作战/训练模式选择按钮 -->
+          <div class="flex">
+            <button 
+              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedMode === '作战' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+              onclick={() => selectedMode = '作战'}
+            >
+              作战
+            </button>
+            <button 
+              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedMode === '训练' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+              onclick={() => selectedMode = '训练'}
+            >
+              训练
+            </button>
+          </div>
+          
+          <!-- 地面/空中环境选择按钮 -->
+          <div class="flex">
+            <button 
+              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedEnvironment === '地面' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+              onclick={() => selectedEnvironment = '地面'}
+            >
+              地面
+            </button>
+            <button 
+              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedEnvironment === '空中' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+              onclick={() => selectedEnvironment = '空中'}
+            >
+              空中
             </button>
           </div>
         </div>
 
-        <!-- 右侧Excel表格区域 - 占据剩余空间 -->
-        <div class="bg-gray-800 border border-gray-700 rounded-lg flex flex-col h-full min-h-0">
-          {#if showResults}
-            <!-- 表格标题栏 -->
-            <div class="bg-gray-750 px-4 py-3 border-b border-gray-700 flex-shrink-0">
-              <h3 class="text-sm font-medium text-gray-200 flex items-center gap-2">
-                <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                </svg>
-                仿真输出参数
-              </h3>
+        <!-- 输入参数 - 缩短输入框宽度为原来的2/3 -->
+        <div class="flex-1 space-y-3 overflow-y-auto">
+          <!-- 高度 -->
+          <div class="flex items-center gap-3">
+            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
+              高度(0~22000)
+            </label>
+            <div class="relative w-16 flex-shrink-0">
+              <input
+                type="text"
+                bind:value={inputParams.height}
+                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                placeholder="0"
+              />
             </div>
+            <span class="text-gray-400 text-xs flex-shrink-0">m</span>
+          </div>
 
-            <!-- 表格内容区域 - 使用flex布局，无滚动条 -->
-            <div class="flex-1 min-h-0">
-              <!-- 使用Grid布局分两列显示所有参数 -->
-              <div class="h-full grid grid-cols-1 lg:grid-cols-2 gap-0">
-                
+          <!-- 马赫数 -->
+          <div class="flex items-center gap-3">
+            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
+              马赫数(0~2.5)
+            </label>
+            <div class="relative w-16 flex-shrink-0">
+              <input
+                type="text"
+                bind:value={inputParams.machNumber}
+                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                placeholder="0"
+              />
+            </div>
+          </div>
+
+          <!-- 温度修正 -->
+          <div class="flex items-center gap-3">
+            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
+              温度修正(0~xx)
+            </label>
+            <div class="relative w-16 flex-shrink-0">
+              <input
+                type="text"
+                bind:value={inputParams.temperature}
+                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                placeholder="0"
+              />
+            </div>
+            <span class="text-gray-400 text-xs flex-shrink-0">K</span>
+          </div>
+
+          <!-- 进气道总压恢复系数 -->
+          <div class="flex items-center gap-3">
+            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
+              进气道(-1或0~1.1)
+            </label>
+            <div class="relative w-16 flex-shrink-0">
+              <input
+                type="text"
+                bind:value={inputParams.gasFlowSystem}
+                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                placeholder="-1"
+              />
+            </div>
+          </div>
+
+          <!-- 功率提取 -->
+          <div class="flex items-center gap-3">
+            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
+              功率提取(0~1000000)
+            </label>
+            <div class="relative w-16 flex-shrink-0">
+              <input
+                type="text"
+                bind:value={inputParams.powerConsumption}
+                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                placeholder="0"
+              />
+            </div>
+            <span class="text-gray-400 text-xs flex-shrink-0">W</span>
+          </div>
+
+          <!-- 压气机出口座舱引气 -->
+          <div class="flex items-center gap-3">
+            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
+              压气机引气(0~2)
+            </label>
+            <div class="relative w-16 flex-shrink-0">
+              <input
+                type="text"
+                bind:value={inputParams.gasCompressionRatio}
+                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                placeholder="0"
+              />
+            </div>
+            <span class="text-gray-400 text-xs flex-shrink-0">%</span>
+          </div>
+
+          <!-- 油门杆角度 -->
+          <div class="flex items-center gap-3">
+            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
+              油门角度(0~115)
+            </label>
+            <div class="relative w-16 flex-shrink-0">
+              <input
+                type="text"
+                bind:value={inputParams.oilFieldAngle}
+                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                placeholder="66"
+              />
+            </div>
+            <span class="text-gray-400 text-xs flex-shrink-0">度</span>
+          </div>
+        </div>
+
+        <!-- 计算按钮 -->
+        <div class="mt-4">
+          <button
+            class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            onclick={handleCalculate}
+            disabled={isCalculating}
+          >
+            <span class="text-sm">▶</span>
+            {isCalculating ? '计算中...' : '计算'}
+          </button>
+        </div>
+      </div>
+
+      <!-- 右侧参数列表 - 参数名称和取值范围在同一行 -->
+      <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+        {#if showResults}
+          <div class="h-full flex flex-col">
+            <!-- 参数列表内容 -->
+            <div class="flex-1 overflow-hidden">
+              <div class="h-full grid grid-cols-2 gap-0">
                 <!-- 左列：参数1-16 -->
-                <div class="border-r border-gray-700 flex flex-col">
-                  <div class="flex-1 space-y-0">
-                    {#each outputParameters.slice(0, 16) as param, index}
-                      <div class="flex items-center justify-between px-3 py-2 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'} min-h-[40px]">
-                        <!-- 左侧：序号 + 参数信息 -->
-                        <div class="flex items-center flex-1 min-w-0">
-                          <!-- 序号 -->
-                          <div class="w-6 text-xs text-gray-500 font-mono flex-shrink-0 mr-2">
-                            {index + 1}
-                          </div>
-                          <!-- 参数名称和取值范围在同一行 -->
-                          <div class="flex-1 min-w-0">
-                            <div class="flex items-baseline gap-1 flex-wrap">
-                              <span class="text-xs text-gray-300 font-medium" title={param.name}>
-                                {param.name}
-                              </span>
-                              <span class="text-xs text-gray-500 flex-shrink-0">
-                                {param.range}
-                              </span>
-                            </div>
-                          </div>
+                <div class="border-r border-gray-700 overflow-y-auto">
+                  {#each outputParameters.slice(0, 16) as param, index}
+                    <div class="flex items-center justify-between px-3 py-2 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
+                      <!-- 左侧：序号 + 参数名称和取值范围 -->
+                      <div class="flex items-center flex-1 min-w-0">
+                        <!-- 序号 -->
+                        <div class="w-6 text-xs text-gray-500 font-mono flex-shrink-0 mr-2">
+                          {index + 1}
                         </div>
-                        <!-- 右侧：数值 -->
-                        <div class="text-xs text-white font-mono bg-gray-700 px-2 py-1 rounded min-w-[60px] text-center flex-shrink-0 ml-2">
-                          {param.value.toFixed(2)}
+                        <!-- 参数名称和取值范围在同一行 -->
+                        <div class="flex-1 min-w-0">
+                          <div class="flex items-baseline gap-1">
+                            <span class="text-xs text-gray-300 font-medium truncate" title={param.name}>
+                              {param.name}
+                            </span>
+                            <span class="text-xs text-gray-500 flex-shrink-0">
+                              {param.range}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    {/each}
-                  </div>
+                      <!-- 右侧：数值 -->
+                      <div class="text-xs text-white font-mono bg-gray-700 px-2 py-1 rounded min-w-[60px] text-center flex-shrink-0 ml-2">
+                        {param.value.toFixed(2)}
+                      </div>
+                    </div>
+                  {/each}
                 </div>
 
                 <!-- 右列：参数17-31 -->
-                <div class="flex flex-col">
-                  <div class="flex-1 space-y-0">
-                    {#each outputParameters.slice(16, 31) as param, index}
-                      <div class="flex items-center justify-between px-3 py-2 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'} min-h-[40px]">
-                        <!-- 左侧：序号 + 参数信息 -->
-                        <div class="flex items-center flex-1 min-w-0">
-                          <!-- 序号 -->
-                          <div class="w-6 text-xs text-gray-500 font-mono flex-shrink-0 mr-2">
-                            {index + 17}
-                          </div>
-                          <!-- 参数名称和取值范围在同一行 -->
-                          <div class="flex-1 min-w-0">
-                            <div class="flex items-baseline gap-1 flex-wrap">
-                              <span class="text-xs text-gray-300 font-medium" title={param.name}>
-                                {param.name}
-                              </span>
-                              <span class="text-xs text-gray-500 flex-shrink-0">
-                                {param.range}
-                              </span>
-                            </div>
-                          </div>
+                <div class="overflow-y-auto">
+                  {#each outputParameters.slice(16, 31) as param, index}
+                    <div class="flex items-center justify-between px-3 py-2 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
+                      <!-- 左侧：序号 + 参数名称和取值范围 -->
+                      <div class="flex items-center flex-1 min-w-0">
+                        <!-- 序号 -->
+                        <div class="w-6 text-xs text-gray-500 font-mono flex-shrink-0 mr-2">
+                          {index + 17}
                         </div>
-                        <!-- 右侧：数值 -->
-                        <div class="text-xs text-white font-mono bg-gray-700 px-2 py-1 rounded min-w-[60px] text-center flex-shrink-0 ml-2">
-                          {param.value.toFixed(2)}
+                        <!-- 参数名称和取值范围在同一行 -->
+                        <div class="flex-1 min-w-0">
+                          <div class="flex items-baseline gap-1">
+                            <span class="text-xs text-gray-300 font-medium truncate" title={param.name}>
+                              {param.name}
+                            </span>
+                            <span class="text-xs text-gray-500 flex-shrink-0">
+                              {param.range}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    {/each}
-                  </div>
+                      <!-- 右侧：数值 -->
+                      <div class="text-xs text-white font-mono bg-gray-700 px-2 py-1 rounded min-w-[60px] text-center flex-shrink-0 ml-2">
+                        {param.value.toFixed(2)}
+                      </div>
+                    </div>
+                  {/each}
                 </div>
               </div>
             </div>
 
             <!-- 底部状态栏 -->
-            <div class="bg-gray-750 px-4 py-2 border-t border-gray-600 flex-shrink-0">
+            <div class="bg-gray-750 px-3 py-2 border-t border-gray-600 flex-shrink-0">
               <div class="flex justify-between items-center text-xs text-gray-400">
                 <span>共 {outputParameters.length} 个参数</span>
                 <div class="flex items-center gap-2">
@@ -387,8 +367,8 @@
                 </div>
               </div>
             </div>
-          {/if}
-        </div>
+          </div>
+        {/if}
       </div>
     </div>
   </div>
