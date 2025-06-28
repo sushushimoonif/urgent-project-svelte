@@ -20,145 +20,93 @@
   let selectedMode = $state('作战');
   let selectedEnvironment = $state('地面');
 
-  // 根据PDF文件定义的31个属性数据
-  const simulationData = [
-    { name: "仿真步长/stepTime", range: "0.025或0.0125", defaultValue: 0.025, unit: "秒/s" },
-    { name: "高度/Height", range: "0~22000", defaultValue: 0, unit: "米/m" },
-    { name: "马赫数/Mach", range: "0~2.5", defaultValue: 0, unit: "" },
-    { name: "温度修正/deltaT", range: "0~xx", defaultValue: 0, unit: "开尔文/K" },
-    { name: "进气道总压恢复系数", range: "-1或0~1.1，-1表示按照经验公式计算", defaultValue: -1, unit: "" },
-    { name: "功率提取", range: "0~1000000", defaultValue: 0, unit: "W" },
-    { name: "压气机出口座舱引气", range: "0~2", defaultValue: 0, unit: "%" },
-    { name: "油门杆角度/PLA", range: "0~115", defaultValue: 66, unit: "度/deg" },
-    { name: "作战or训练", range: "0（作战）或1（训练）", defaultValue: 0, unit: "" },
-    { name: "地面or空中", range: "0（地面）或1（空中）", defaultValue: 0, unit: "" },
-    { name: "低压轴换算转速/N1cor", range: "0~110", defaultValue: 100, unit: "" },
-    { name: "高压轴换算转速/N2cor", range: "0~120", defaultValue: 110, unit: "" },
-    { name: "发动机进口物理流量/WTCor", range: "0~300", defaultValue: 245.8, unit: "kg/s" },
-    { name: "发动机净推力/F", range: "0~20000", defaultValue: 15420.5, unit: "N" },
-    { name: "发动机总推力/FG", range: "0~25000", defaultValue: 16890.2, unit: "N" },
-    { name: "喷管出口面积/A8", range: "0~1", defaultValue: 0.245, unit: "m²" },
-    { name: "加力喷管出口面积/A9", range: "0~1", defaultValue: 0.312, unit: "m²" },
-    { name: "风扇出口面积/A16", range: "0~1", defaultValue: 0.156, unit: "m²" },
-    { name: "高压压气机出口总温/T3", range: "200~800", defaultValue: 658.4, unit: "K" },
-    { name: "高压涡轮进口总温/T41", range: "800~1500", defaultValue: 1245.6, unit: "K" },
-    { name: "低压涡轮进口总温/T43", range: "800~1300", defaultValue: 1156.8, unit: "K" },
-    { name: "风扇出口总压/P21", range: "1~5", defaultValue: 2.45, unit: "bar" },
-    { name: "高压压气机出口总压/P3", range: "5~20", defaultValue: 12.8, unit: "bar" },
-    { name: "高压涡轮进口总压/P41", range: "5~18", defaultValue: 11.2, unit: "bar" },
-    { name: "低压涡轮进口总压/P43", range: "2~8", defaultValue: 3.8, unit: "bar" },
-    { name: "低压涡轮出口总温/T6", range: "600~1100", defaultValue: 945.2, unit: "K" },
-    { name: "低压涡轮出口总压/P6", range: "1~4", defaultValue: 2.1, unit: "bar" },
-    { name: "喷管出口总压/P8", range: "1~3", defaultValue: 1.8, unit: "bar" },
-    { name: "加力燃烧室出口总温/T38", range: "800~1400", defaultValue: 1089.5, unit: "K" },
-    { name: "喷管出口总温/T8", range: "600~1000", defaultValue: 856.3, unit: "K" },
-    { name: "燃油消耗率", range: "1000~5000", defaultValue: 2456.8, unit: "kg/h" }
-  ];
-
-  // dataIN数组 - 建立映射关系
-  let dataIN = $state([
-    { name: "stepTime", data: 0.025 },
-    { name: "Height", data: 0 },
-    { name: "Mach", data: 0 },
-    { name: "deltaT", data: 0 },
-    { name: "intakeTotalPressureCoeff", data: -1 },
-    { name: "powerExtraction", data: 0 },
-    { name: "bleedAirRatio", data: 0 },
-    { name: "pla", data: 66 },
-    { name: "missionType", data: 0 },
-    { name: "flightMode", data: 0 },
-    { name: "N1cor", data: 100 },
-    { name: "N2cor", data: 110 },
-    { name: "WTCor", data: 245.8 },
-    { name: "F", data: 15420.5 },
-    { name: "FG", data: 16890.2 },
-    { name: "A8", data: 0.245 },
-    { name: "A9", data: 0.312 },
-    { name: "A16", data: 0.156 },
-    { name: "T3", data: 658.4 },
-    { name: "T41", data: 1245.6 },
-    { name: "T43", data: 1156.8 },
-    { name: "P21", data: 2.45 },
-    { name: "P3", data: 12.8 },
-    { name: "P41", data: 11.2 },
-    { name: "P43", data: 3.8 },
-    { name: "T6", data: 945.2 },
-    { name: "P6", data: 2.1 },
-    { name: "P8", data: 1.8 },
-    { name: "T38", data: 1089.5 },
-    { name: "T8", data: 856.3 },
-    { name: "fuelConsumption", data: 2456.8 }
+  // 计算结果数据 - 包含所有30个参数的默认值
+  let calculationResults = $state<Array<{name: string, value: number}>>([
+    { name: "高度/m", value: 0 },
+    { name: "马赫数", value: 0 },
+    { name: "温度修正/开尔文", value: 0 },
+    { name: "进气道总压恢复系数", value: -1 },
+    { name: "功率提取/W", value: 0 },
+    { name: "压气机出口座舱引气/%", value: 0 },
+    { name: "油门杆角度PLA/度", value: 66 },
+    { name: "发动机进口物理流量/kg/s", value: 245.8 },
+    { name: "发动机净推力/N", value: 15420.5 },
+    { name: "发动机总推力/N", value: 16890.2 },
+    { name: "发动机进口净推阻力/N", value: 1245.6 },
+    { name: "低压转子转速/rpm", value: 8542.3 },
+    { name: "高压转子转速/rpm", value: 12456.7 },
+    { name: "加力燃烧室燃油流量/kg/h", value: 1156.8 },
+    { name: "风扇出口总压/Pa", value: 245000.0 },
+    { name: "高压压气机出口总压/Pa", value: 1280000.0 },
+    { name: "高压涡轮进口总压/Pa", value: 1120000.0 },
+    { name: "低压涡轮进口总压/Pa", value: 380000.0 },
+    { name: "低压涡轮出口总压/Pa", value: 210000.0 },
+    { name: "风扇出口总温/K", value: 658.4 },
+    { name: "高压压气机出口总温/K", value: 945.2 },
+    { name: "高压涡轮进口总温/K", value: 1245.6 },
+    { name: "低压涡轮进口总温/K", value: 1089.5 },
+    { name: "低压涡轮出口总温/K", value: 856.3 },
+    { name: "喷管出口面积/m²", value: 0.245 },
+    { name: "加力喷管出口面积/m²", value: 0.312 },
+    { name: "喷管出口速度/m/s", value: 456.2 },
+    { name: "喷管出口总温/K", value: 798.4 },
+    { name: "燃油消耗率/kg/h", value: 2456.8 },
+    { name: "推重比", value: 8.5 }
   ]);
-
-  // 参数名称映射关系
-  const parameterMapping = {
-    "stepTime": "selectedSimulationStep",
-    "Height": "height",
-    "Mach": "machNumber", 
-    "deltaT": "temperature",
-    "intakeTotalPressureCoeff": "gasFlowSystem",
-    "powerExtraction": "powerConsumption",
-    "bleedAirRatio": "gasCompressionRatio",
-    "pla": "oilFieldAngle",
-    "missionType": "selectedMode",
-    "flightMode": "selectedEnvironment"
-  };
-
-  // 更新dataIN数组的函数
-  function updateDataIN() {
-    // 更新仿真步长
-    dataIN[0].data = parseFloat(selectedSimulationStep);
-    
-    // 更新输入参数
-    dataIN[1].data = parseFloat(inputParams.height) || 0;
-    dataIN[2].data = parseFloat(inputParams.machNumber) || 0;
-    dataIN[3].data = parseFloat(inputParams.temperature) || 0;
-    dataIN[4].data = parseFloat(inputParams.gasFlowSystem) || -1;
-    dataIN[5].data = parseFloat(inputParams.powerConsumption) || 0;
-    dataIN[6].data = parseFloat(inputParams.gasCompressionRatio) || 0;
-    dataIN[7].data = parseFloat(inputParams.oilFieldAngle) || 66;
-    
-    // 更新模式选择
-    dataIN[8].data = selectedMode === '作战' ? 0 : 1;
-    dataIN[9].data = selectedEnvironment === '地面' ? 0 : 1;
-  }
-
-  // 格式化显示数据的函数
-  function formatDisplayData() {
-    updateDataIN();
-    
-    return simulationData.map((item, index) => {
-      const currentValue = dataIN[index]?.data ?? item.defaultValue;
-      return {
-        name: item.name,
-        range: item.range,
-        currentValue: currentValue,
-        unit: item.unit,
-        displayText: `${item.name}(${item.range}), ${currentValue}${item.unit ? ' ' + item.unit : ''}`
-      };
-    });
-  }
-
-  // 分列显示数据
-  const displayData = $derived(formatDisplayData());
-  const leftColumnData = $derived(displayData.slice(0, 15));
-  const rightColumnData = $derived(displayData.slice(15, 31));
 
   // 构建调用参数
   function buildCalculationParams() {
-    updateDataIN();
     return {
-      stepTime: dataIN[0].data,
-      height: dataIN[1].data,
-      mach: dataIN[2].data,
-      deltaT: dataIN[3].data,
-      intakeTotalPressureCoeff: dataIN[4].data,
-      powerExtraction: dataIN[5].data,
-      bleedAirRatio: dataIN[6].data,
-      pla: dataIN[7].data,
-      missionType: dataIN[8].data,
-      flightMode: dataIN[9].data
+      stepTime: parseFloat(selectedSimulationStep),
+      height: parseFloat(inputParams.height) || 0.0,
+      mach: parseFloat(inputParams.machNumber) || 0.0,
+      deltaT: parseFloat(inputParams.temperature) || 0.0,
+      intakeTotalPressureCoeff: parseFloat(inputParams.gasFlowSystem) || -1.0,
+      powerExtraction: parseFloat(inputParams.powerConsumption) || 0.0,
+      bleedAirRatio: parseFloat(inputParams.gasCompressionRatio) || 0.0,
+      pla: parseFloat(inputParams.oilFieldAngle) || 66.0,
+      missionType: selectedMode === '作战' ? 0 : 1,
+      flightMode: selectedEnvironment === '地面' ? 0 : 1
     };
+  }
+
+  // 生成计算结果数据
+  function generateCalculationResults() {
+    // 更新前7个参数为用户输入值
+    const updatedResults = [...calculationResults];
+    
+    // 更新仿真步长
+    const simulationStepResult = { name: "仿真步长/秒", value: parseFloat(selectedSimulationStep) };
+    
+    // 更新用户输入的参数值
+    updatedResults[0] = { name: "高度/m", value: parseFloat(inputParams.height) || 0 };
+    updatedResults[1] = { name: "马赫数", value: parseFloat(inputParams.machNumber) || 0 };
+    updatedResults[2] = { name: "温度修正/开尔文", value: parseFloat(inputParams.temperature) || 0 };
+    updatedResults[3] = { name: "进气道总压恢复系数", value: parseFloat(inputParams.gasFlowSystem) || -1 };
+    updatedResults[4] = { name: "功率提取/W", value: parseFloat(inputParams.powerConsumption) || 0 };
+    updatedResults[5] = { name: "压气机出口座舱引气/%", value: parseFloat(inputParams.gasCompressionRatio) || 0 };
+    updatedResults[6] = { name: "油门杆角度PLA/度", value: parseFloat(inputParams.oilFieldAngle) || 66 };
+    
+    // 其他参数保持模拟计算值或根据输入参数进行简单计算
+    for (let i = 7; i < updatedResults.length; i++) {
+      // 添加一些随机变化来模拟计算结果
+      const baseValue = calculationResults[i].value;
+      const variation = (Math.random() - 0.5) * 0.1; // ±5% 变化
+      updatedResults[i].value = baseValue * (1 + variation);
+    }
+    
+    return { simulationStepResult, calculationResults: updatedResults };
+  }
+
+  // 将结果分成两列显示，每列第一行都是仿真步长，然后是15行数据
+  function splitResultsIntoColumns(results: Array<{name: string, value: number}>, simulationStep: {name: string, value: number}) {
+    // 左列：仿真步长 + 前15个结果
+    const leftColumn = [simulationStep, ...results.slice(0, 15)];
+    
+    // 右列：仿真步长 + 后15个结果
+    const rightColumn = [simulationStep, ...results.slice(15, 30)];
+    
+    return { leftColumn, rightColumn };
   }
 
   async function handleCalculate() {
@@ -168,19 +116,15 @@
       // 构建调用参数
       const params = buildCalculationParams();
       console.log('计算参数:', params);
-      console.log('dataIN数组:', dataIN);
       
       // 模拟计算延迟
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // 模拟计算结果更新 - 更新后面的计算结果参数
-      for (let i = 10; i < dataIN.length; i++) {
-        const baseValue = simulationData[i].defaultValue;
-        const variation = (Math.random() - 0.5) * 0.1; // ±5% 变化
-        dataIN[i].data = baseValue * (1 + variation);
-      }
+      // 生成新的计算结果
+      const { simulationStepResult, calculationResults: newResults } = generateCalculationResults();
+      calculationResults = newResults;
       
-      console.log('计算完成，更新后的dataIN:', dataIN);
+      console.log('计算完成');
       
     } catch (error) {
       console.error('计算过程中出错:', error);
@@ -188,6 +132,12 @@
       isCalculating = false;
     }
   }
+
+  // 获取分列显示的结果
+  const columnResults = $derived(() => {
+    const { simulationStepResult } = generateCalculationResults();
+    return splitResultsIntoColumns(calculationResults, simulationStepResult);
+  });
 </script>
 
 <div class="min-h-[calc(100vh-120px)] bg-gray-900 p-4 sm:p-6 lg:p-8">
@@ -370,67 +320,41 @@
         </div>
       </div>
 
-      <!-- 右侧结果面板 - 动态数据列表 -->
+      <!-- 右侧结果面板 -->
       <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
         {#if showResults}
           <div class="h-full overflow-auto p-6">
-            <!-- 两个并列的列表 -->
+            <!-- 两个并列的表格 -->
             <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 h-full">
-              <!-- 左列 - 前15个数据 -->
+              <!-- 左侧表格 - 16行（仿真步长 + 15行数据） -->
               <div class="bg-gray-900 rounded border border-gray-600 overflow-hidden">
-                <div class="bg-gray-750 px-3 py-2 border-b border-gray-700">
-                  <h3 class="text-sm font-medium text-gray-200">参数列表 (1-15)</h3>
-                </div>
-                <div class="overflow-y-auto h-full p-3">
-                  <div class="space-y-2">
-                    {#each leftColumnData as item, index}
-                      <div class="bg-gray-800 rounded px-3 py-2 border border-gray-600 hover:border-gray-500 transition-colors">
-                        <div class="flex flex-col gap-1">
-                          <div class="text-xs text-gray-300 font-medium">
-                            {item.name}
-                          </div>
-                          <div class="text-xs text-gray-400">
-                            范围: {item.range}
-                          </div>
-                          <div class="flex justify-between items-center">
-                            <span class="text-xs text-gray-500">当前值:</span>
-                            <span class="text-xs text-white font-mono">
-                              {item.currentValue.toFixed(3)}{item.unit ? ' ' + item.unit : ''}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    {/each}
-                  </div>
+                <div class="overflow-x-auto h-full">
+                  <table class="w-full text-sm h-full">
+                    <tbody>
+                      {#each columnResults.leftColumn as result, index}
+                        <tr class="border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
+                          <td class="px-4 py-3 text-gray-300 border-r border-gray-600 w-2/3">{result.name}</td>
+                          <td class="px-4 py-3 text-center text-white font-mono w-1/3">{result.value.toFixed(3)}</td>
+                        </tr>
+                      {/each}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
-              <!-- 右列 - 后16个数据 -->
+              <!-- 右侧表格 - 16行（仿真步长 + 15行数据） -->
               <div class="bg-gray-900 rounded border border-gray-600 overflow-hidden">
-                <div class="bg-gray-750 px-3 py-2 border-b border-gray-700">
-                  <h3 class="text-sm font-medium text-gray-200">参数列表 (16-31)</h3>
-                </div>
-                <div class="overflow-y-auto h-full p-3">
-                  <div class="space-y-2">
-                    {#each rightColumnData as item, index}
-                      <div class="bg-gray-800 rounded px-3 py-2 border border-gray-600 hover:border-gray-500 transition-colors">
-                        <div class="flex flex-col gap-1">
-                          <div class="text-xs text-gray-300 font-medium">
-                            {item.name}
-                          </div>
-                          <div class="text-xs text-gray-400">
-                            范围: {item.range}
-                          </div>
-                          <div class="flex justify-between items-center">
-                            <span class="text-xs text-gray-500">当前值:</span>
-                            <span class="text-xs text-white font-mono">
-                              {item.currentValue.toFixed(3)}{item.unit ? ' ' + item.unit : ''}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    {/each}
-                  </div>
+                <div class="overflow-x-auto h-full">
+                  <table class="w-full text-sm h-full">
+                    <tbody>
+                      {#each columnResults.rightColumn as result, index}
+                        <tr class="border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
+                          <td class="px-4 py-3 text-gray-300 border-r border-gray-600 w-2/3">{result.name}</td>
+                          <td class="px-4 py-3 text-center text-white font-mono w-1/3">{result.value.toFixed(3)}</td>
+                        </tr>
+                      {/each}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
