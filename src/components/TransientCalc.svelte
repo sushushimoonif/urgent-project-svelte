@@ -6,8 +6,8 @@
   let selectedFile = $state<File | null>(null);
   let csvData = $state<string[][]>([]);
 
-  // 计算按钮是否可用 - 只有上传文件后才能计算
-  $: canCalculate = selectedFile !== null && csvData.length > 0;
+  // 计算按钮是否可用 - 只有上传文件后才能计算 - 使用 $derived 替代 $:
+  const canCalculate = $derived(selectedFile !== null && csvData.length > 0);
 
   // 读取CSV文件内容
   function readCSVFile(file: File): Promise<string[][]> {
