@@ -90,8 +90,22 @@
     { name: "fuelConsumption", data: 2456.8 }
   ]);
 
-  // 使用$effect来响应输入变化并更新dataIN
-  $effect(() => {
+  // 参数名称映射关系
+  const parameterMapping = {
+    "stepTime": "selectedSimulationStep",
+    "Height": "height",
+    "Mach": "machNumber", 
+    "deltaT": "temperature",
+    "intakeTotalPressureCoeff": "gasFlowSystem",
+    "powerExtraction": "powerConsumption",
+    "bleedAirRatio": "gasCompressionRatio",
+    "pla": "oilFieldAngle",
+    "missionType": "selectedMode",
+    "flightMode": "selectedEnvironment"
+  };
+
+  // 更新dataIN数组的函数
+  function updateDataIN() {
     // 更新仿真步长
     dataIN[0].data = parseFloat(selectedSimulationStep);
     
@@ -107,11 +121,13 @@
     // 更新模式选择
     dataIN[8].data = selectedMode === '作战' ? 0 : 1;
     dataIN[9].data = selectedEnvironment === '地面' ? 0 : 1;
-  });
+  }
 
-  // 使用$derived来计算显示数据，确保返回数组
-  const displayData = $derived(() => {
-    const result = simulationData.map((item, index) => {
+  // 格式化显示数据的函数
+  function formatDisplayData() {
+    updateDataIN();
+    
+    return simulationData.map((item, index) => {
       const currentValue = dataIN[index]?.data ?? item.defaultValue;
       return {
         name: item.name,
@@ -121,22 +137,16 @@
         displayText: `${item.name}(${item.range}), ${currentValue}${item.unit ? ' ' + item.unit : ''}`
       };
     });
-    return result;
-  });
+  }
 
-  // 分列显示数据 - 确保displayData是数组后再调用slice
-  const leftColumnData = $derived(() => {
-    const data = displayData;
-    return Array.isArray(data) ? data.slice(0, 15) : [];
-  });
-  
-  const rightColumnData = $derived(() => {
-    const data = displayData;
-    return Array.isArray(data) ? data.slice(15, 31) : [];
-  });
+  // 分列显示数据
+  const displayData = $derived(formatDisplayData());
+  const leftColumnData = $derived(displayData.slice(0, 15));
+  const rightColumnData = $derived(displayData.slice(15, 31));
 
   // 构建调用参数
   function buildCalculationParams() {
+    updateDataIN();
     return {
       stepTime: dataIN[0].data,
       height: dataIN[1].data,
