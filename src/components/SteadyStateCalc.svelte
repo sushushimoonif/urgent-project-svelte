@@ -90,22 +90,8 @@
     { name: "fuelConsumption", data: 2456.8 }
   ]);
 
-  // 参数名称映射关系
-  const parameterMapping = {
-    "stepTime": "selectedSimulationStep",
-    "Height": "height",
-    "Mach": "machNumber", 
-    "deltaT": "temperature",
-    "intakeTotalPressureCoeff": "gasFlowSystem",
-    "powerExtraction": "powerConsumption",
-    "bleedAirRatio": "gasCompressionRatio",
-    "pla": "oilFieldAngle",
-    "missionType": "selectedMode",
-    "flightMode": "selectedEnvironment"
-  };
-
-  // 更新dataIN数组的函数
-  function updateDataIN() {
+  // 使用$effect来响应输入变化并更新dataIN
+  $effect(() => {
     // 更新仿真步长
     dataIN[0].data = parseFloat(selectedSimulationStep);
     
@@ -121,12 +107,10 @@
     // 更新模式选择
     dataIN[8].data = selectedMode === '作战' ? 0 : 1;
     dataIN[9].data = selectedEnvironment === '地面' ? 0 : 1;
-  }
+  });
 
-  // 格式化显示数据的函数
-  function formatDisplayData() {
-    updateDataIN();
-    
+  // 使用$derived来计算显示数据，不修改状态
+  const displayData = $derived(() => {
     return simulationData.map((item, index) => {
       const currentValue = dataIN[index]?.data ?? item.defaultValue;
       return {
@@ -137,16 +121,14 @@
         displayText: `${item.name}(${item.range}), ${currentValue}${item.unit ? ' ' + item.unit : ''}`
       };
     });
-  }
+  });
 
   // 分列显示数据
-  const displayData = $derived(formatDisplayData());
   const leftColumnData = $derived(displayData.slice(0, 15));
   const rightColumnData = $derived(displayData.slice(15, 31));
 
   // 构建调用参数
   function buildCalculationParams() {
-    updateDataIN();
     return {
       stepTime: dataIN[0].data,
       height: dataIN[1].data,
