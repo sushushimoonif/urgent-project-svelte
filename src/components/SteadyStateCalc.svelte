@@ -162,116 +162,118 @@
           </div>
         </div>
 
-        <!-- 输入参数 - 缩短输入框宽度为原来的2/3 -->
+        <!-- 输入参数 - text框和单位右对齐 -->
         <div class="flex-1 space-y-3 overflow-y-auto">
           <!-- 高度 -->
-          <div class="flex items-center gap-3">
-            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
+          <div class="flex items-center">
+            <label class="text-xs text-gray-300 flex-1">
               高度(0~22000)
             </label>
-            <div class="relative w-16 flex-shrink-0">
+            <div class="flex items-center gap-1">
               <input
                 type="text"
                 bind:value={inputParams.height}
-                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                class="w-12 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
                 placeholder="0"
               />
+              <span class="text-gray-400 text-xs w-4">m</span>
             </div>
-            <span class="text-gray-400 text-xs flex-shrink-0">m</span>
           </div>
 
           <!-- 马赫数 -->
-          <div class="flex items-center gap-3">
-            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
+          <div class="flex items-center">
+            <label class="text-xs text-gray-300 flex-1">
               马赫数(0~2.5)
             </label>
-            <div class="relative w-16 flex-shrink-0">
+            <div class="flex items-center gap-1">
               <input
                 type="text"
                 bind:value={inputParams.machNumber}
-                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                class="w-12 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
                 placeholder="0"
               />
+              <span class="text-gray-400 text-xs w-4"></span>
             </div>
           </div>
 
           <!-- 温度修正 -->
-          <div class="flex items-center gap-3">
-            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
+          <div class="flex items-center">
+            <label class="text-xs text-gray-300 flex-1">
               温度修正(0~xx)
             </label>
-            <div class="relative w-16 flex-shrink-0">
+            <div class="flex items-center gap-1">
               <input
                 type="text"
                 bind:value={inputParams.temperature}
-                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                class="w-12 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
                 placeholder="0"
               />
+              <span class="text-gray-400 text-xs w-4">K</span>
             </div>
-            <span class="text-gray-400 text-xs flex-shrink-0">K</span>
           </div>
 
           <!-- 进气道总压恢复系数 -->
-          <div class="flex items-center gap-3">
-            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
+          <div class="flex items-center">
+            <label class="text-xs text-gray-300 flex-1">
               进气道(-1或0~1.1)
             </label>
-            <div class="relative w-16 flex-shrink-0">
+            <div class="flex items-center gap-1">
               <input
                 type="text"
                 bind:value={inputParams.gasFlowSystem}
-                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                class="w-12 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
                 placeholder="-1"
               />
+              <span class="text-gray-400 text-xs w-4"></span>
             </div>
           </div>
 
           <!-- 功率提取 -->
-          <div class="flex items-center gap-3">
-            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
+          <div class="flex items-center">
+            <label class="text-xs text-gray-300 flex-1">
               功率提取(0~1000000)
             </label>
-            <div class="relative w-16 flex-shrink-0">
+            <div class="flex items-center gap-1">
               <input
                 type="text"
                 bind:value={inputParams.powerConsumption}
-                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                class="w-12 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
                 placeholder="0"
               />
+              <span class="text-gray-400 text-xs w-4">W</span>
             </div>
-            <span class="text-gray-400 text-xs flex-shrink-0">W</span>
           </div>
 
           <!-- 压气机出口座舱引气 -->
-          <div class="flex items-center gap-3">
-            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
+          <div class="flex items-center">
+            <label class="text-xs text-gray-300 flex-1">
               压气机引气(0~2)
             </label>
-            <div class="relative w-16 flex-shrink-0">
+            <div class="flex items-center gap-1">
               <input
                 type="text"
                 bind:value={inputParams.gasCompressionRatio}
-                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                class="w-12 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
                 placeholder="0"
               />
+              <span class="text-gray-400 text-xs w-4">%</span>
             </div>
-            <span class="text-gray-400 text-xs flex-shrink-0">%</span>
           </div>
 
           <!-- 油门杆角度 -->
-          <div class="flex items-center gap-3">
-            <label class="text-xs text-gray-300 w-32 flex-shrink-0">
+          <div class="flex items-center">
+            <label class="text-xs text-gray-300 flex-1">
               油门角度(0~115)
             </label>
-            <div class="relative w-16 flex-shrink-0">
+            <div class="flex items-center gap-1">
               <input
                 type="text"
                 bind:value={inputParams.oilFieldAngle}
-                class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                class="w-12 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
                 placeholder="66"
               />
+              <span class="text-gray-400 text-xs w-4">度</span>
             </div>
-            <span class="text-gray-400 text-xs flex-shrink-0">度</span>
           </div>
         </div>
 
@@ -288,7 +290,7 @@
         </div>
       </div>
 
-      <!-- 右侧参数列表 - 参数名称和取值范围在同一行 -->
+      <!-- 右侧参数列表 - 缩短每行宽度1/3 -->
       <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
         {#if showResults}
           <div class="h-full flex flex-col">
@@ -298,28 +300,25 @@
                 <!-- 左列：参数1-16 -->
                 <div class="border-r border-gray-700 overflow-y-auto">
                   {#each outputParameters.slice(0, 16) as param, index}
-                    <div class="flex items-center justify-between px-3 py-2 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
-                      <!-- 左侧：序号 + 参数名称和取值范围 -->
-                      <div class="flex items-center flex-1 min-w-0">
-                        <!-- 序号 -->
-                        <div class="w-6 text-xs text-gray-500 font-mono flex-shrink-0 mr-2">
-                          {index + 1}
-                        </div>
-                        <!-- 参数名称和取值范围在同一行 -->
-                        <div class="flex-1 min-w-0">
-                          <div class="flex items-baseline gap-1">
-                            <span class="text-xs text-gray-300 font-medium truncate" title={param.name}>
-                              {param.name}
-                            </span>
-                            <span class="text-xs text-gray-500 flex-shrink-0">
-                              {param.range}
-                            </span>
-                          </div>
+                    <div class="flex items-center px-2 py-2 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
+                      <!-- 序号 -->
+                      <div class="w-4 text-xs text-gray-500 font-mono flex-shrink-0 mr-1">
+                        {index + 1}
+                      </div>
+                      <!-- 参数名称和取值范围 -->
+                      <div class="flex-1 min-w-0 mr-1">
+                        <div class="flex items-baseline gap-1">
+                          <span class="text-xs text-gray-300 font-medium truncate" title={param.name}>
+                            {param.name}
+                          </span>
+                          <span class="text-xs text-gray-500 flex-shrink-0">
+                            {param.range}
+                          </span>
                         </div>
                       </div>
-                      <!-- 右侧：数值 -->
-                      <div class="text-xs text-white font-mono bg-gray-700 px-2 py-1 rounded min-w-[60px] text-center flex-shrink-0 ml-2">
-                        {param.value.toFixed(2)}
+                      <!-- 数值 -->
+                      <div class="text-xs text-white font-mono bg-gray-700 px-1 py-1 rounded min-w-[45px] text-center flex-shrink-0">
+                        {param.value.toFixed(1)}
                       </div>
                     </div>
                   {/each}
@@ -328,28 +327,25 @@
                 <!-- 右列：参数17-31 -->
                 <div class="overflow-y-auto">
                   {#each outputParameters.slice(16, 31) as param, index}
-                    <div class="flex items-center justify-between px-3 py-2 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
-                      <!-- 左侧：序号 + 参数名称和取值范围 -->
-                      <div class="flex items-center flex-1 min-w-0">
-                        <!-- 序号 -->
-                        <div class="w-6 text-xs text-gray-500 font-mono flex-shrink-0 mr-2">
-                          {index + 17}
-                        </div>
-                        <!-- 参数名称和取值范围在同一行 -->
-                        <div class="flex-1 min-w-0">
-                          <div class="flex items-baseline gap-1">
-                            <span class="text-xs text-gray-300 font-medium truncate" title={param.name}>
-                              {param.name}
-                            </span>
-                            <span class="text-xs text-gray-500 flex-shrink-0">
-                              {param.range}
-                            </span>
-                          </div>
+                    <div class="flex items-center px-2 py-2 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
+                      <!-- 序号 -->
+                      <div class="w-4 text-xs text-gray-500 font-mono flex-shrink-0 mr-1">
+                        {index + 17}
+                      </div>
+                      <!-- 参数名称和取值范围 -->
+                      <div class="flex-1 min-w-0 mr-1">
+                        <div class="flex items-baseline gap-1">
+                          <span class="text-xs text-gray-300 font-medium truncate" title={param.name}>
+                            {param.name}
+                          </span>
+                          <span class="text-xs text-gray-500 flex-shrink-0">
+                            {param.range}
+                          </span>
                         </div>
                       </div>
-                      <!-- 右侧：数值 -->
-                      <div class="text-xs text-white font-mono bg-gray-700 px-2 py-1 rounded min-w-[60px] text-center flex-shrink-0 ml-2">
-                        {param.value.toFixed(2)}
+                      <!-- 数值 -->
+                      <div class="text-xs text-white font-mono bg-gray-700 px-1 py-1 rounded min-w-[45px] text-center flex-shrink-0">
+                        {param.value.toFixed(1)}
                       </div>
                     </div>
                   {/each}
