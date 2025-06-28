@@ -233,23 +233,41 @@
         </div>
       </div>
 
-      <!-- 右侧参数列表 - 调整行间距占满页面 -->
+      <!-- 右侧参数列表 - 添加标题和调整行间距 -->
       <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
         {#if showResults}
           <div class="h-full flex flex-col">
-            <!-- 参数列表内容 - 调整行间距 -->
+            <!-- 表格标题 -->
+            <div class="bg-gray-700 border-b border-gray-600">
+              <div class="grid grid-cols-2 gap-0">
+                <div class="px-4 py-3 text-center font-medium text-gray-200 border-r border-gray-600">
+                  <div class="flex justify-between">
+                    <span class="text-sm">名称</span>
+                    <span class="text-sm">数值</span>
+                  </div>
+                </div>
+                <div class="px-4 py-3 text-center font-medium text-gray-200">
+                  <div class="flex justify-between">
+                    <span class="text-sm">名称</span>
+                    <span class="text-sm">数值</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 参数列表内容 - 调整行间距适中占满页面 -->
             <div class="flex-1 overflow-hidden">
               <div class="h-full grid grid-cols-2 gap-0">
                 <!-- 左列：参数1-16 -->
                 <div class="border-r border-gray-700 overflow-hidden">
                   {#each outputParameters.slice(0, 16) as param, index}
-                    <div class="flex items-center px-2 py-1.5 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'} h-[calc((100vh-280px)/16)]">
+                    <div class="flex items-center px-3 py-2 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'} h-[calc((100vh-320px)/16)]">
                       <!-- 序号 -->
-                      <div class="w-4 text-xs text-gray-500 font-mono flex-shrink-0 mr-1">
+                      <div class="w-5 text-xs text-gray-500 font-mono flex-shrink-0 mr-2">
                         {index + 1}
                       </div>
                       <!-- 参数名称和取值范围 -->
-                      <div class="flex-1 min-w-0 mr-1">
+                      <div class="flex-1 min-w-0 mr-2">
                         <div class="flex items-baseline gap-1">
                           <span class="text-xs text-gray-300 font-medium truncate" title={param.title}>
                             {param.title}
@@ -260,7 +278,7 @@
                         </div>
                       </div>
                       <!-- 数值 - 保留两位小数 -->
-                      <div class="text-xs text-white font-mono bg-gray-700 px-1 py-1 rounded min-w-[50px] text-center flex-shrink-0">
+                      <div class="text-xs text-white font-mono bg-gray-700 px-2 py-1 rounded min-w-[60px] text-center flex-shrink-0">
                         {param.value.toFixed(2)}
                       </div>
                     </div>
@@ -270,13 +288,13 @@
                 <!-- 右列：参数17-31 -->
                 <div class="overflow-hidden">
                   {#each outputParameters.slice(16, 31) as param, index}
-                    <div class="flex items-center px-2 py-1.5 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'} h-[calc((100vh-280px)/15)]">
+                    <div class="flex items-center px-3 py-2 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'} h-[calc((100vh-320px)/15)]">
                       <!-- 序号 -->
-                      <div class="w-4 text-xs text-gray-500 font-mono flex-shrink-0 mr-1">
+                      <div class="w-5 text-xs text-gray-500 font-mono flex-shrink-0 mr-2">
                         {index + 17}
                       </div>
                       <!-- 参数名称和取值范围 -->
-                      <div class="flex-1 min-w-0 mr-1">
+                      <div class="flex-1 min-w-0 mr-2">
                         <div class="flex items-baseline gap-1">
                           <span class="text-xs text-gray-300 font-medium truncate" title={param.title}>
                             {param.title}
@@ -287,7 +305,7 @@
                         </div>
                       </div>
                       <!-- 数值 - 保留两位小数 -->
-                      <div class="text-xs text-white font-mono bg-gray-700 px-1 py-1 rounded min-w-[50px] text-center flex-shrink-0">
+                      <div class="text-xs text-white font-mono bg-gray-700 px-2 py-1 rounded min-w-[60px] text-center flex-shrink-0">
                         {param.value.toFixed(2)}
                       </div>
                     </div>
