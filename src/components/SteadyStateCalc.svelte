@@ -233,20 +233,20 @@
         </div>
       </div>
 
-      <!-- 右侧参数列表 - 使用新的数据结构显示 -->
+      <!-- 右侧参数列表 - 缩短行间距 -->
       <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
         {#if showResults}
           <div class="h-full flex flex-col">
-            <!-- 参数列表内容 -->
+            <!-- 参数列表内容 - 缩短行间距 -->
             <div class="flex-1 overflow-hidden">
               <div class="h-full grid grid-cols-2 gap-0">
                 <!-- 左列：参数1-16 -->
                 <div class="border-r border-gray-700 overflow-y-auto">
                   {#each outputParameters.slice(0, 16) as param, index}
-                    <div class="flex items-center px-2 py-1 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
+                    <div class="flex items-center px-2 py-0.5 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
                       <!-- 序号 -->
                       <div class="w-4 text-xs text-gray-500 font-mono flex-shrink-0 mr-1">
-                        {index}
+                        {index + 1}
                       </div>
                       <!-- 参数名称和取值范围 -->
                       <div class="flex-1 min-w-0 mr-1">
@@ -260,7 +260,7 @@
                         </div>
                       </div>
                       <!-- 数值 - 保留两位小数 -->
-                      <div class="text-xs text-white font-mono bg-gray-700 px-1 py-1 rounded min-w-[50px] text-center flex-shrink-0">
+                      <div class="text-xs text-white font-mono bg-gray-700 px-1 py-0.5 rounded min-w-[50px] text-center flex-shrink-0">
                         {param.value.toFixed(2)}
                       </div>
                     </div>
@@ -270,10 +270,10 @@
                 <!-- 右列：参数17-31 -->
                 <div class="overflow-y-auto">
                   {#each outputParameters.slice(16, 31) as param, index}
-                    <div class="flex items-center px-2 py-1 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
+                    <div class="flex items-center px-2 py-0.5 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
                       <!-- 序号 -->
                       <div class="w-4 text-xs text-gray-500 font-mono flex-shrink-0 mr-1">
-                        {index + 16}
+                        {index + 17}
                       </div>
                       <!-- 参数名称和取值范围 -->
                       <div class="flex-1 min-w-0 mr-1">
@@ -287,7 +287,7 @@
                         </div>
                       </div>
                       <!-- 数值 - 保留两位小数 -->
-                      <div class="text-xs text-white font-mono bg-gray-700 px-1 py-1 rounded min-w-[50px] text-center flex-shrink-0">
+                      <div class="text-xs text-white font-mono bg-gray-700 px-1 py-0.5 rounded min-w-[50px] text-center flex-shrink-0">
                         {param.value.toFixed(2)}
                       </div>
                     </div>
