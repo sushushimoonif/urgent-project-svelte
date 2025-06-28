@@ -297,36 +297,33 @@
         </div>
       </div>
 
-      <!-- 右侧Excel格式数据列表 -->
-      <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
-        {#if showResults}
-          <div class="h-full overflow-auto">
-            <!-- Excel样式标题栏 -->
-            <div class="bg-gray-700 px-4 py-2 border-b border-gray-600 sticky top-0 z-10">
-              <h3 class="text-sm font-medium text-gray-200 flex items-center gap-2">
-                <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                </svg>
-                仿真输出参数列表 (共31个参数)
-              </h3>
-            </div>
-
-            <!-- Excel格式数据表格 -->
-            <div class="grid grid-cols-1 xl:grid-cols-2 gap-0 h-full">
-              <!-- 左侧列表 - 前15个参数 -->
-              <div class="border-r border-gray-700">
-                <div class="bg-gray-750 px-3 py-2 border-b border-gray-600 text-xs font-medium text-gray-300">
+      <!-- 右侧参数组区域 - 调整为与左侧计算栏等高并排布局 -->
+      <div class="flex-1 flex gap-4">
+        <!-- 参数组A - 宽度缩减为50% -->
+        <div class="w-1/2 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+          {#if showResults}
+            <div class="h-full flex flex-col">
+              <!-- 参数组A标题栏 -->
+              <div class="bg-gray-700 px-3 py-2 border-b border-gray-600 flex-shrink-0">
+                <h3 class="text-sm font-medium text-gray-200 flex items-center gap-2">
+                  <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                  </svg>
                   参数组 A (1-15)
-                </div>
+                </h3>
+              </div>
+
+              <!-- 参数组A内容 -->
+              <div class="flex-1 overflow-y-auto">
                 <div class="space-y-0">
                   {#each columnResults.leftColumn as param, index}
                     <div class="flex items-center px-3 py-2 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
                       <!-- 序号 -->
-                      <div class="w-8 text-xs text-gray-500 font-mono">
+                      <div class="w-6 text-xs text-gray-500 font-mono flex-shrink-0">
                         {index + 1}
                       </div>
                       <!-- 参数信息 -->
-                      <div class="flex-1 min-w-0">
+                      <div class="flex-1 min-w-0 mx-2">
                         <div class="text-xs text-gray-300 font-medium truncate" title={param.name}>
                           {param.name}
                         </div>
@@ -335,7 +332,7 @@
                         </div>
                       </div>
                       <!-- 数值 -->
-                      <div class="text-xs text-white font-mono bg-gray-700 px-2 py-1 rounded min-w-[60px] text-center">
+                      <div class="text-xs text-white font-mono bg-gray-700 px-2 py-1 rounded min-w-[60px] text-center flex-shrink-0">
                         {param.value.toFixed(3)}
                       </div>
                     </div>
@@ -343,20 +340,45 @@
                 </div>
               </div>
 
-              <!-- 右侧列表 - 后16个参数 -->
-              <div>
-                <div class="bg-gray-750 px-3 py-2 border-b border-gray-600 text-xs font-medium text-gray-300">
-                  参数组 B (16-31)
+              <!-- 参数组A状态栏 -->
+              <div class="bg-gray-750 px-3 py-2 border-t border-gray-600 flex-shrink-0">
+                <div class="flex justify-between items-center text-xs text-gray-400">
+                  <span>参数组A</span>
+                  <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span>实时</span>
+                  </div>
                 </div>
+              </div>
+            </div>
+          {/if}
+        </div>
+
+        <!-- 参数组B - 紧邻参数组A右侧 -->
+        <div class="w-1/2 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+          {#if showResults}
+            <div class="h-full flex flex-col">
+              <!-- 参数组B标题栏 -->
+              <div class="bg-gray-700 px-3 py-2 border-b border-gray-600 flex-shrink-0">
+                <h3 class="text-sm font-medium text-gray-200 flex items-center gap-2">
+                  <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                  </svg>
+                  参数组 B (16-31)
+                </h3>
+              </div>
+
+              <!-- 参数组B内容 -->
+              <div class="flex-1 overflow-y-auto">
                 <div class="space-y-0">
                   {#each columnResults.rightColumn as param, index}
                     <div class="flex items-center px-3 py-2 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
                       <!-- 序号 -->
-                      <div class="w-8 text-xs text-gray-500 font-mono">
+                      <div class="w-6 text-xs text-gray-500 font-mono flex-shrink-0">
                         {index + 16}
                       </div>
                       <!-- 参数信息 -->
-                      <div class="flex-1 min-w-0">
+                      <div class="flex-1 min-w-0 mx-2">
                         <div class="text-xs text-gray-300 font-medium truncate" title={param.name}>
                           {param.name}
                         </div>
@@ -365,27 +387,27 @@
                         </div>
                       </div>
                       <!-- 数值 -->
-                      <div class="text-xs text-white font-mono bg-gray-700 px-2 py-1 rounded min-w-[60px] text-center">
+                      <div class="text-xs text-white font-mono bg-gray-700 px-2 py-1 rounded min-w-[60px] text-center flex-shrink-0">
                         {param.value.toFixed(3)}
                       </div>
                     </div>
                   {/each}
                 </div>
               </div>
-            </div>
 
-            <!-- 底部状态栏 -->
-            <div class="bg-gray-750 px-4 py-2 border-t border-gray-600 sticky bottom-0">
-              <div class="flex justify-between items-center text-xs text-gray-400">
-                <span>仿真步长: {selectedSimulationStep}秒 | 模式: {selectedMode} | 环境: {selectedEnvironment}</span>
-                <div class="flex items-center gap-2">
-                  <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span>实时更新</span>
+              <!-- 参数组B状态栏 -->
+              <div class="bg-gray-750 px-3 py-2 border-t border-gray-600 flex-shrink-0">
+                <div class="flex justify-between items-center text-xs text-gray-400">
+                  <span>参数组B</span>
+                  <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                    <span>实时</span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        {/if}
+          {/if}
+        </div>
       </div>
     </div>
   </div>
