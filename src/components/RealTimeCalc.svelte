@@ -43,6 +43,7 @@
   // 油门杆角度控制
   let throttleValue = $state(66.66);
   let isDraggingThrottle = $state(false);
+  let throttleContainer: HTMLElement | null = null; // 添加容器引用
 
   // 初始曲线图数据
   let curveCharts = $state([
@@ -144,26 +145,29 @@
     updateDataInValue("油门杆角度", throttleValue);
   }
 
-  // 油门杆角度SVG控制 - 增强交互功能
+  // 油门杆角度SVG控制器 - 修复交互功能
   function handleThrottleMouseDown(event: MouseEvent) {
     isDraggingThrottle = true;
+    throttleContainer = event.currentTarget as HTMLElement;
     updateThrottleValue(event);
     event.preventDefault();
   }
 
   function handleThrottleMouseMove(event: MouseEvent) {
-    if (!isDraggingThrottle) return;
+    if (!isDraggingThrottle || !throttleContainer) return;
     updateThrottleValue(event);
     event.preventDefault();
   }
 
   function handleThrottleMouseUp() {
     isDraggingThrottle = false;
+    throttleContainer = null;
   }
 
   function updateThrottleValue(event: MouseEvent) {
-    const svgContainer = event.currentTarget as HTMLElement;
-    const rect = svgContainer.getBoundingClientRect();
+    if (!throttleContainer) return;
+    
+    const rect = throttleContainer.getBoundingClientRect();
     const y = event.clientY - rect.top;
     
     // SVG高度为381，有效控制范围从4到376（对应120到0度）
@@ -718,15 +722,16 @@
         <!-- 油门杆角度和输入参数 - 增加高度，修复显示问题 -->
         <div class="p-4 flex-1 overflow-visible">
           <div class="flex items-start gap-4 h-full">
-            <!-- 左侧：油门杆角度SVG控制器 - 增强交互 -->
+            <!-- 左侧：油门杆角度SVG控制器 - 修复交互 -->
             <div class="flex-shrink-0">
               <h3 class="text-xs text-gray-300 mb-3">油门杆角度</h3>
               <div class="relative">
-                <!-- SVG油门杆控制器容器 -->
+                <!-- SVG油门杆控制器容器 - 添加容器引用 -->
                 <div 
                   class="cursor-pointer select-none {isDraggingThrottle ? 'cursor-grabbing' : 'cursor-grab'}"
                   onmousedown={handleThrottleMouseDown}
                   style="width: 50px; height: 381px;"
+                  bind:this={throttleContainer}
                 >
                   <!-- SVG背景 - 基于Frame3183.svg -->
                   <svg width="50" height="381" viewBox="0 0 50 381" fill="none" xmlns="http://www.w3.org/2000/svg" class="absolute inset-0">
