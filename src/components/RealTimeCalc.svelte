@@ -731,7 +731,7 @@
                   <!-- SVG背景 - 基于Frame3183.svg -->
                   <svg width="50" height="381" viewBox="0 0 50 381" fill="none" xmlns="http://www.w3.org/2000/svg" class="absolute inset-0">
                     <!-- 刻度数字 -->
-                    <text x="-5" y="12" fill="white" fill-opacity="0.7" font-size="12">120</text>
+                    <text x="-2" y="12" fill="white" fill-opacity="0.7" font-size="12">120</text>
                     <text x="9" y="73" fill="white" fill-opacity="0.7" font-size="12">100</text>
                     <text x="9" y="135" fill="white" fill-opacity="0.7" font-size="12">80</text>
                     <text x="9" y="197" fill="white" fill-opacity="0.7" font-size="12">60</text>
