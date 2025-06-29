@@ -3,7 +3,6 @@
   import CurveChartManager from './CurveChartManager.svelte';
   import ChartDisplay from './ChartDisplay.svelte';
   import RealTimeMonitor from './RealTimeMonitor.svelte';
-  import Frame3183 from '../Frame3183.svg?raw';
 
   let isCalculating = $state(false);
   let isPaused = $state(false);
@@ -145,15 +144,17 @@
     updateDataInValue("油门杆角度", throttleValue);
   }
 
-  // 油门杆角度SVG控制
+  // 油门杆角度SVG控制 - 增强交互功能
   function handleThrottleMouseDown(event: MouseEvent) {
     isDraggingThrottle = true;
     updateThrottleValue(event);
+    event.preventDefault();
   }
 
   function handleThrottleMouseMove(event: MouseEvent) {
     if (!isDraggingThrottle) return;
     updateThrottleValue(event);
+    event.preventDefault();
   }
 
   function handleThrottleMouseUp() {
@@ -161,11 +162,11 @@
   }
 
   function updateThrottleValue(event: MouseEvent) {
-    const svgElement = event.currentTarget as SVGElement;
-    const rect = svgElement.getBoundingClientRect();
+    const svgContainer = event.currentTarget as HTMLElement;
+    const rect = svgContainer.getBoundingClientRect();
     const y = event.clientY - rect.top;
     
-    // SVG高度为381，有效范围从4到376（对应120到0度）
+    // SVG高度为381，有效控制范围从4到376（对应120到0度）
     const svgHeight = 381;
     const minY = 4;
     const maxY = 376;
@@ -201,44 +202,82 @@
     }
   }
 
-  // 生成模拟实时数据 - dataOut格式
+  // 生成模拟实时数据 - dataOut格式，包含完整的时间序列数据
   function generateMockRealtimeData() {
-    const timePoints = 50; // 生成50个时间点的数据
+    const timePoints = 100; // 生成100个时间点的数据
+    const stepSize = parseFloat(selectedSimulationStep); // 使用当前仿真步长
+    
     const mockData = [
       {
         name: "高压涡轮出口总压",
-        data: Array.from({length: timePoints}, (_, i) => [i * 0.1, 10 + Math.sin(i * 0.2) * 3 + Math.random() * 2])
+        data: Array.from({length: timePoints}, (_, i) => [
+          i * stepSize, // x轴：时间
+          10 + Math.sin(i * 0.2) * 3 + Math.random() * 2 // y轴：压力值
+        ])
       },
       {
         name: "高压压气机出口总压", 
-        data: Array.from({length: timePoints}, (_, i) => [i * 0.1, 15 + Math.cos(i * 0.15) * 2 + Math.random() * 1.5])
+        data: Array.from({length: timePoints}, (_, i) => [
+          i * stepSize,
+          15 + Math.cos(i * 0.15) * 2 + Math.random() * 1.5
+        ])
       },
       {
         name: "低压涡轮出口总压",
-        data: Array.from({length: timePoints}, (_, i) => [i * 0.1, 8 + Math.sin(i * 0.25) * 2.5 + Math.random() * 1.8])
+        data: Array.from({length: timePoints}, (_, i) => [
+          i * stepSize,
+          8 + Math.sin(i * 0.25) * 2.5 + Math.random() * 1.8
+        ])
       },
       {
         name: "发动机净马力",
-        data: Array.from({length: timePoints}, (_, i) => [i * 0.1, 1200 + Math.sin(i * 0.1) * 100 + Math.random() * 50])
+        data: Array.from({length: timePoints}, (_, i) => [
+          i * stepSize,
+          1200 + Math.sin(i * 0.1) * 100 + Math.random() * 50
+        ])
       },
       {
         name: "发动机总马力",
-        data: Array.from({length: timePoints}, (_, i) => [i * 0.1, 1400 + Math.cos(i * 0.12) * 80 + Math.random() * 40])
+        data: Array.from({length: timePoints}, (_, i) => [
+          i * stepSize,
+          1400 + Math.cos(i * 0.12) * 80 + Math.random() * 40
+        ])
       },
       {
         name: "风扇出口总压",
-        data: Array.from({length: timePoints}, (_, i) => [i * 0.1, 12 + Math.sin(i * 0.18) * 1.5 + Math.random() * 1])
+        data: Array.from({length: timePoints}, (_, i) => [
+          i * stepSize,
+          12 + Math.sin(i * 0.18) * 1.5 + Math.random() * 1
+        ])
+      },
+      {
+        name: "低压涡轮进口总压",
+        data: Array.from({length: timePoints}, (_, i) => [
+          i * stepSize,
+          20 + Math.cos(i * 0.22) * 4 + Math.random() * 2
+        ])
+      },
+      {
+        name: "高压涡轮进口总压",
+        data: Array.from({length: timePoints}, (_, i) => [
+          i * stepSize,
+          25 + Math.sin(i * 0.16) * 3 + Math.random() * 1.5
+        ])
       }
     ];
     
+    console.log('生成模拟数据:', mockData);
     return mockData;
   }
 
-  // 根据dataOut更新图表数据
+  // 根据dataOut更新图表数据 - 完善的渲染逻辑
   function updateChartsFromDataOut(dataOutResult: Array<{name: string, data: number[][]}>) {
     dataOut = dataOutResult;
+    console.log('更新图表数据，dataOut:', dataOut);
     
     curveCharts.forEach(chart => {
+      console.log(`处理图表 ${chart.name}，曲线:`, chart.curves.map(c => c.name));
+      
       const chartDataPoints: Array<{time: number, values: number[]}> = [];
       
       // 找到第一条曲线的数据来确定时间点数量
@@ -246,17 +285,21 @@
       const firstCurveData = dataOut.find(d => d.name === firstCurve.name);
       
       if (firstCurveData && firstCurveData.data.length > 0) {
+        console.log(`找到第一条曲线 ${firstCurve.name} 的数据，时间点数量:`, firstCurveData.data.length);
+        
         // 遍历每个时间点
         for (let timeIndex = 0; timeIndex < firstCurveData.data.length; timeIndex++) {
           const values: number[] = [];
           
           // 为每条曲线获取对应时间点的值
-          chart.curves.forEach(curve => {
+          chart.curves.forEach((curve, curveIndex) => {
             const curveData = dataOut.find(d => d.name === curve.name);
             if (curveData && curveData.data[timeIndex]) {
               values.push(curveData.data[timeIndex][1]); // 取y轴坐标
             } else {
-              values.push(0); // 默认值
+              // 如果没有找到对应数据，使用默认值
+              values.push(10 + curveIndex * 5 + Math.random() * 2);
+              console.log(`曲线 ${curve.name} 在时间点 ${timeIndex} 没有数据，使用默认值`);
             }
           });
           
@@ -265,10 +308,17 @@
             values: values
           });
         }
+        
+        console.log(`图表 ${chart.name} 生成了 ${chartDataPoints.length} 个数据点`);
+      } else {
+        console.log(`图表 ${chart.name} 的第一条曲线 ${firstCurve.name} 没有找到数据`);
       }
       
       chartData.set(chart.id, chartDataPoints);
     });
+    
+    // 触发响应式更新
+    chartData = new Map(chartData);
   }
 
   // 更新监控表格数据
@@ -336,6 +386,11 @@
         if (Array.isArray(initialData)) {
           updateChartsFromDataOut(initialData);
           updateMonitorTableData(initialData);
+        } else {
+          // 使用模拟数据
+          const mockData = generateMockRealtimeData();
+          updateChartsFromDataOut(mockData);
+          updateMonitorTableData(mockData);
         }
         
         showResults = true;
@@ -351,7 +406,11 @@
         
       } catch (error) {
         console.error('首次后端调用失败:', error);
-        // 即使首次调用失败，也继续显示界面
+        // 即使首次调用失败，也继续显示界面并使用模拟数据
+        const mockData = generateMockRealtimeData();
+        updateChartsFromDataOut(mockData);
+        updateMonitorTableData(mockData);
+        
         showResults = true;
         showMonitorModal = true;
         curveCharts.forEach(chart => {
@@ -659,16 +718,60 @@
         <!-- 油门杆角度和输入参数 - 增加高度，修复显示问题 -->
         <div class="p-4 flex-1 overflow-visible">
           <div class="flex items-start gap-4 h-full">
-            <!-- 左侧：油门杆角度SVG控制器 -->
+            <!-- 左侧：油门杆角度SVG控制器 - 增强交互 -->
             <div class="flex-shrink-0">
               <h3 class="text-xs text-gray-300 mb-3">油门杆角度</h3>
               <div class="relative">
-                <!-- SVG油门杆控制器 -->
+                <!-- SVG油门杆控制器容器 -->
                 <div 
-                  class="cursor-pointer"
+                  class="cursor-pointer select-none {isDraggingThrottle ? 'cursor-grabbing' : 'cursor-grab'}"
                   onmousedown={handleThrottleMouseDown}
+                  style="width: 50px; height: 381px;"
                 >
-                  {@html Frame3183}
+                  <!-- SVG背景 -->
+                  <svg width="50" height="381" viewBox="0 0 50 381" fill="none" xmlns="http://www.w3.org/2000/svg" class="absolute inset-0">
+                    <!-- 刻度数字 -->
+                    <text x="5" y="12" fill="white" fill-opacity="0.7" font-size="12">120</text>
+                    <text x="9" y="73" fill="white" fill-opacity="0.7" font-size="12">100</text>
+                    <text x="9" y="135" fill="white" fill-opacity="0.7" font-size="12">80</text>
+                    <text x="9" y="197" fill="white" fill-opacity="0.7" font-size="12">60</text>
+                    <text x="14" y="259" fill="white" fill-opacity="0.7" font-size="12">40</text>
+                    <text x="9" y="321" fill="white" fill-opacity="0.7" font-size="12">20</text>
+                    <text x="15" y="383" fill="white" fill-opacity="0.7" font-size="12">0</text>
+                    
+                    <!-- 主刻度线 -->
+                    <line x1="22.5" y1="4" x2="32.5" y2="4" stroke="white" stroke-opacity="0.7"/>
+                    <line x1="22.5" y1="66" x2="32.5" y2="66" stroke="white" stroke-opacity="0.7"/>
+                    <line x1="22.5" y1="128" x2="32.5" y2="128" stroke="white" stroke-opacity="0.7"/>
+                    <line x1="22.5" y1="190" x2="32.5" y2="190" stroke="white" stroke-opacity="0.7"/>
+                    <line x1="22.5" y1="252" x2="32.5" y2="252" stroke="white" stroke-opacity="0.7"/>
+                    <line x1="22.5" y1="314" x2="32.5" y2="314" stroke="white" stroke-opacity="0.7"/>
+                    <line x1="22.5" y1="376" x2="32.5" y2="376" stroke="white" stroke-opacity="0.7"/>
+                    
+                    <!-- 小刻度线 -->
+                    {#each Array(30) as _, i}
+                      {@const y = 4 + i * 12.4}
+                      {#if y <= 376 && (y - 4) % 62 !== 0}
+                        <line x1="22.5" y1={y} x2="27.5" y2={y} stroke="white" stroke-opacity="0.7" stroke-width="0.5"/>
+                      {/if}
+                    {/each}
+                    
+                    <!-- 滑轨背景 -->
+                    <rect x="37.5" y="2.5" width="3" height="369" rx="1.5" fill="#141414"/>
+                  </svg>
+                  
+                  <!-- 滑块指示器 -->
+                  {#each [throttleValue] as value}
+                    {@const percentage = (120 - value) / 120}
+                    {@const sliderY = 4 + percentage * 372}
+                    <div class="absolute" style="top: {sliderY - 5.5}px; left: 36.5px;">
+                      <!-- 滑块主体 -->
+                      <rect width="4" height="11" rx="1.5" fill="#3598DB" stroke="#3598DB"/>
+                      <!-- 滑块手柄 -->
+                      <rect x="28" y="3" width="21" height="5" rx="1.5" fill="#141414" stroke="#3598DB"/>
+                      <rect x="32.5" y="4.5" width="12" height="2" rx="1" fill="#3598DB"/>
+                    </div>
+                  {/each}
                 </div>
                 
                 <!-- 当前值显示 -->
