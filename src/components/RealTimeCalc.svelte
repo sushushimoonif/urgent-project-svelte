@@ -735,9 +735,9 @@
                     <text x="-1" y="70" fill="white" fill-opacity="0.7" font-size="12">100</text>
                     <text x="3" y="132" fill="white" fill-opacity="0.7" font-size="12">80</text>
                     <text x="3" y="194" fill="white" fill-opacity="0.7" font-size="12">60</text>
-                    <text x="14" y="259" fill="white" fill-opacity="0.7" font-size="12">40</text>
-                    <text x="9" y="321" fill="white" fill-opacity="0.7" font-size="12">20</text>
-                    <text x="15" y="383" fill="white" fill-opacity="0.7" font-size="12">0</text>
+                    <text x="3" y="259" fill="white" fill-opacity="0.7" font-size="12">40</text>
+                    <text x="3" y="321" fill="white" fill-opacity="0.7" font-size="12">20</text>
+                    <text x="3" y="383" fill="white" fill-opacity="0.7" font-size="12">0</text>
                     
                     <!-- 主刻度线 -->
                     <line x1="22.5" y1="4" x2="32.5" y2="4" stroke="white" stroke-opacity="0.7"/>
