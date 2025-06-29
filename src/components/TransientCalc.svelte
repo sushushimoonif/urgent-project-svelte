@@ -446,6 +446,16 @@
     }
   }
 
+  // 返回第一个页面
+  function handleBackToFirstPage() {
+    showResults = false;
+    // 清理数据
+    chartDataSets.clear();
+    dataOut = [];
+    dataIn = [];
+    console.log('返回过渡态计算第一个页面');
+  }
+
   // 计算函数 - 实现dataIn和dataOut数据格式处理
   async function handleCalculate() {
     if (!selectedFile && csvData.length === 0) {
@@ -677,42 +687,17 @@
 
         <!-- 右侧图表区域 - 占据剩余空间 -->
         <div class="flex-1 flex flex-col">
-          <!-- 顶部控制栏 -->
-          <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-4">
-            <div class="flex justify-between items-center">
-              <!-- 左侧：计算状态和数据流验证信息 -->
-              <div class="flex items-center gap-4">
-                <div class="flex items-center gap-2">
-                  <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span class="text-sm text-gray-300">过渡态计算完成</span>
-                </div>
-                <div class="text-xs text-gray-400">
-                  数据点数: {csvData.length > 0 ? csvData[0].length - 1 : 0}
-                </div>
-                <div class="text-xs text-gray-400">
-                  文件: {selectedFile?.name || '未知'}
-                </div>
-                <div class="text-xs text-blue-400">
-                  数据流: CSV → dataIn → 后端 → dataOut → data_chart_{'{id}'} → uPlot
-                </div>
-              </div>
-              
-              <!-- 右侧：控制按钮 -->
-              <div class="flex items-center gap-2">
-                <button
-                  class="px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded transition-colors"
-                  onclick={() => showResults = false}
-                >
-                  返回编辑
-                </button>
-                <button
-                  class="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded transition-colors"
-                  onclick={logAllDataCharts}
-                >
-                  调试数据
-                </button>
-              </div>
-            </div>
+          <!-- 左上方返回按钮 -->
+          <div class="mb-4">
+            <button
+              class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors"
+              onclick={handleBackToFirstPage}
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+              </svg>
+              返回
+            </button>
           </div>
 
           <!-- 图表显示区域 -->
@@ -720,7 +705,7 @@
             <div class="grid grid-cols-1 gap-6">
               {#each curveCharts as chart (chart.id)}
                 <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-lg">
-                  <!-- 图表标题 - 显示data_chart信息 -->
+                  <!-- 图表标题 - 删除data_chart信息显示 -->
                   <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold text-gray-200 flex items-center gap-2">
                       <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -728,9 +713,7 @@
                       </svg>
                       {chart.name}
                     </h3>
-                    <div class="text-xs text-gray-400">
-                      data_chart_{chart.id}: {chartDataSets.get(chart.id)?.length || 0} 点
-                    </div>
+                    <!-- 删除data_chart_{id}显示信息 -->
                   </div>
 
                   <!-- uPlot图表容器 -->
