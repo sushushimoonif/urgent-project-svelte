@@ -207,7 +207,7 @@
       },
       {
         name: "进气道总压恢复系数",
-        data: [parseFloat(inputParams.gasFlowSystem) || -1]
+        data: [parseFloat(inputParams.gasFlowSystem) ||0]
       },
       {
         name: "功率提取",
@@ -1265,7 +1265,7 @@
 
               <!-- 压气机出口座舱引气(0~2) -->
               <div class="space-y-1">
-                <label class="text-xs text-gray-300 block">压气机出口座舱引气(0~2)</label>
+                <label class="text-xs text-gray-300 block">压气机出口座舱引气(0~100000)</label>
                 <div class="relative">
                   <input
                     type="text"
