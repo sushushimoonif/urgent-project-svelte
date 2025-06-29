@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { invoke } from '@tauri-apps/api/tauri';
+  import { invoke } from "@tauri-apps/api/core";
 
   let isCalculating = $state(false);
   let showResults = $state(true); // 页面加载时立即显示结果
@@ -38,40 +38,50 @@
   let selectedMode = $state('作战');
   let selectedEnvironment = $state('地面');
 
-  // 输出参数 - 修改为dataOut，31条数据（不包含仿真步长，仿真步长单独处理）
+  // 输出参数 - 第一张表：仿真步长 + 15个虚拟数据，第二张表：16个虚拟数据
   let dataOut = $state([
-    { name: "低压轴换算转速", data: [22000.00] },
-    { name: "高压轴换算转速", data: [1.33] },
-    { name: "发动机进口换算流量/kg/s", data: [300.66] },
-    { name: "发动机净推力/kN", data: [200000.00] },
-    { name: "发动机总推力/kN", data: [300.55] },
-    { name: "发动机进口冲压阻力/kN", data: [114.33] },
-    { name: "发动机总耗油量/kg/h", data: [300.55] },
-    { name: "主燃烧室耗油量/kg/h", data: [111111] },
-    { name: "加力燃烧室耗油量/kg/h", data: [1345567] },
-    { name: "喷管喉道面积/m²", data: [31311] },
-    { name: "喷管出口面积/m²", data: [231] },
-    { name: "风扇出口温度/K", data: [12312] },
-    { name: "高压压气机出口温度/K", data: [5678] },
-    { name: "高压涡轮进口温度/K", data: [906534] },
-    { name: "低压涡轮进口温度/K", data: [24234] },
-    { name: "低压轴换算转速", data: [22000.00] },
-    { name: "高压轴换算转速", data: [1.33] },
-    { name: "发动机进口换算流量/kg/s", data: [300.66] },
-    { name: "发动机净推力/kN", data: [200000.00] },
-    { name: "发动机总推力/kN", data: [300.55] },
-    { name: "发动机进口冲压阻力/kN", data: [114.33] },
-    { name: "发动机总耗油量/kg/h", data: [300.55] },
-    { name: "主燃烧室耗油量/kg/h", data: [111111] },
-    { name: "加力燃烧室耗油量/kg/h", data: [1345567] },
-    { name: "喷管喉道面积/m²", data: [31311] },
-    { name: "喷管出口面积/m²", data: [231] },
-    { name: "风扇出口温度/K", data: [12312] },
-    { name: "高压压气机出口温度/K", data: [5678] },
-    { name: "高压涡轮进口温度/K", data: [906534] },
-    { name: "低压涡轮进口温度/K", data: [24234] },
-    { name: "额外参数", data: [0] }
+    // 第一张表数据（仿真步长 + 15个虚拟数据）
+    { name: "仿真步长", data: ["0.025"] }, // 第1行：仿真步长 - 使用字符串保持原始格式
+    { name: "低压轴换算转速", data: [8542.30] },
+    { name: "高压轴换算转速", data: [12456.70] },
+    { name: "发动机进口换算流量/kg/s", data: [245.80] },
+    { name: "发动机净推力/kN", data: [15420.50] },
+    { name: "发动机总推力/kN", data: [16890.20] },
+    { name: "发动机进口冲压阻力/kN", data: [245.60] },
+    { name: "发动机总耗油量/kg/h", data: [3456.80] },
+    { name: "主燃烧室耗油量/kg/h", data: [2890.40] },
+    { name: "加力燃烧室耗油量/kg/h", data: [566.40] },
+    { name: "喷管喉道面积/m²", data: [0.245] },
+    { name: "喷管出口面积/m²", data: [0.312] },
+    { name: "风扇出口温度/K", data: [658.40] },
+    { name: "高压压气机出口温度/K", data: [1245.60] },
+    { name: "高压涡轮进口温度/K", data: [1156.80] },
+    { name: "低压涡轮进口温度/K", data: [945.20] },
+    
+    // 第二张表数据（16个虚拟数据）
+    { name: "低压涡轮出口温度/K", data: [756.30] },
+    { name: "风扇出口总压/kPa", data: [245.80] },
+    { name: "高压压气机出口总压/kPa", data: [1280.50] },
+    { name: "高压涡轮进口总压/kPa", data: [1120.30] },
+    { name: "低压涡轮进口总压/kPa", data: [890.70] },
+    { name: "低压涡轮出口总压/kPa", data: [156.40] },
+    { name: "喷管出口总压/kPa", data: [101.30] },
+    { name: "喷管出口速度/m/s", data: [1245.60] },
+    { name: "喷管出口马赫数", data: [2.15] },
+    { name: "推重比", data: [8.45] },
+    { name: "单位推力/N·s/kg", data: [1456.80] },
+    { name: "推进效率", data: [0.85] },
+    { name: "热效率", data: [0.42] },
+    { name: "总效率", data: [0.36] },
+    { name: "燃油消耗率/kg/(kN·h)", data: [0.78] },
+    { name: "比冲/s", data: [1890.50] }
   ]);
+
+  // 检查是否在 Tauri 环境中
+  function isTauriEnvironment(): boolean {
+    return typeof window !== 'undefined' && 
+           typeof window.__TAURI_IPC__ === 'function';
+  }
 
   // 更新dataIN中的选项状态
   function updateDataINOptions() {
@@ -106,41 +116,54 @@
         airParam.data = [0];
       }
     }
+
+    // 更新输出参数中的仿真步长（只有第一个参数）- 使用原始字符串值
+    if (dataOut.length > 0 && dataOut[0].name === "仿真步长") {
+      dataOut[0].data = [selectedSimulationStep]; // 直接使用字符串，不转换为数字
+    }
   }
 
-  // 更新输出参数的值 - 根据后端返回的dataOut更新
-  function updateOutputParameters(newDataOut: Array<{name: string, data: number[]}>) {
-    newDataOut.forEach(outParam => {
-      const outputParam = dataOut.find(p => p.name === outParam.name);
-      if (outputParam && outParam.data && outParam.data.length > 0) {
-        outputParam.data = [...outParam.data];
+  // 生成虚拟数据 - 为除仿真步长外的所有参数生成随机数据
+  function generateVirtualData() {
+    dataOut.forEach((param, index) => {
+      if (index === 0) {
+        // 第一个参数是仿真步长，使用用户选择的原始字符串值
+        param.data = [selectedSimulationStep];
+      } else {
+        // 其他参数生成虚拟数据，在原值基础上添加随机变化
+        const baseValue = typeof param.data[0] === 'number' ? param.data[0] : 100;
+        const variation = (Math.random() - 0.5) * 0.2; // ±10%的变化
+        param.data = [baseValue * (1 + variation)];
       }
     });
     // 触发响应式更新
     dataOut = [...dataOut];
   }
 
-  // 生成模拟的dataOut数据
-  function generateMockDataOut() {
-    return dataOut.map(param => ({
-      name: param.name,
-      data: [(Math.random() * 100 + 50)] // 生成随机数
-    }));
-  }
-
-  // 调用后端计算函数 - 直接使用invoke函数
+  // 调用后端计算函数 - 添加环境检查
   async function callSteadyStateCalculation(data: any) {
     try {
-      // 直接使用 Tauri invoke 调用后端的 transient_calculation 函数
-      const result = await invoke("transient_calculation", data);
-      return result;
+      // 检查是否在 Tauri 环境中
+      if (isTauriEnvironment()) {
+        // 在 Tauri 环境中，使用 invoke 调用后端
+        const result = await invoke("transient_calculation", data);
+        return result;
+      } else {
+        // 在浏览器环境中，返回模拟成功结果
+        console.log('运行在浏览器环境中，使用模拟数据');
+        return {
+          success: true,
+          message: '浏览器环境模拟计算完成',
+          dataOut: null
+        };
+      }
     } catch (error) {
       console.error('计算调用失败:', error);
       // 如果调用失败，返回模拟结果作为后备
       return {
         success: false,
         message: '计算失败，返回模拟结果',
-        dataOut: generateMockDataOut()
+        dataOut: null
       };
     }
   }
@@ -161,25 +184,19 @@
       
       console.log('发送到后端的数据:', data);
       
-      // 模拟网络延迟
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       // 调用后端计算函数
       const result = await callSteadyStateCalculation(data);
       console.log('计算返回结果:', result);
       
-      // 根据返回的dataOut更新输出参数
-      if (result.dataOut) {
-        updateOutputParameters(result.dataOut);
-      } else {
-        // 如果没有返回dataOut，使用模拟数据
-        updateOutputParameters(generateMockDataOut());
-      }
+      // 生成虚拟数据（包括更新仿真步长）
+      generateVirtualData();
       
-      console.log('输出参数已更新');
+      console.log('虚拟数据已生成');
       
     } catch (error) {
       console.error('计算过程中出错:', error);
+      // 出错时也生成虚拟数据
+      generateVirtualData();
     } finally {
       isCalculating = false;
     }
@@ -200,9 +217,14 @@
     }
   }
 
-  // 获取仿真步长的值
-  function getSimulationStepValue(): number {
-    return parseFloat(selectedSimulationStep);
+  // 格式化显示值 - 仿真步长显示原始字符串，其他数值显示两位小数
+  function formatDisplayValue(param: any): string {
+    if (param.name === "仿真步长") {
+      return param.data[0]; // 直接返回字符串，不格式化
+    } else {
+      const value = param.data[0];
+      return typeof value === 'number' ? value.toFixed(2) : '0.00';
+    }
   }
 </script>
 
@@ -229,7 +251,7 @@
             </button>
           </div>
           
-          <!-- 作战/训练模式选择按钮 -->
+          <!-- 作战/训练 -->
           <div class="flex">
             <button 
               class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedMode === '作战' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
@@ -245,7 +267,7 @@
             </button>
           </div>
           
-          <!-- 地面/空中环境选择按钮 -->
+          <!-- 地面/空中 -->
           <div class="flex">
             <button 
               class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedEnvironment === '地面' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
@@ -262,7 +284,7 @@
           </div>
         </div>
 
-        <!-- 输入参数 - 使用新的数据结构 -->
+        <!-- 输入参数 -->
         <div class="flex-1 space-y-3 overflow-y-auto">
           {#each Object.entries(parameterLabels) as [paramName, config]}
             <div class="flex items-center">
@@ -295,76 +317,69 @@
         </div>
       </div>
 
-      <!-- 右侧参数列表 - 使用两个独立的table -->
-      <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
-        {#if showResults}
-          <div class="h-full flex">
-            <!-- 第一个表格 -->
-            <div class="flex-1 border-r border-gray-600">
-              <table class="w-full h-full text-sm">
-                <!-- 表头 -->
-                <thead class="bg-gray-700">
-                  <tr>
-                    <th class="px-4 py-3 text-left font-medium text-gray-200 border-r border-gray-600">名称</th>
-                    <th class="px-4 py-3 text-right font-medium text-gray-200">数值</th>
-                  </tr>
-                </thead>
-                
-                <!-- 数据行 -->
-                <tbody>
-                  <!-- 第一行：仿真步长 -->
-                  <tr class="border-b border-gray-600 hover:bg-gray-750 transition-colors bg-gray-700">
-                    <td class="px-4 py-3 text-gray-200 font-medium border-r border-gray-600">仿真步长</td>
-                    <td class="px-4 py-3 text-white font-mono text-right">{getSimulationStepValue().toFixed(3)}</td>
-                  </tr>
+      <!-- 右侧两张表格 --->
+      <div class="flex-1 flex gap-4">
+        <!-- 第一张表格：仿真步长 + 15个虚拟数据 -->
+        <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+          {#if showResults}
+            <div class="h-full flex flex-col">
+              <div class="flex-1 overflow-auto">
+                <table class="w-full text-sm">
+                  <!-- 表头 -->
+                  <thead class="bg-gray-700 sticky top-0">
+                    <tr>
+                      <th class="px-4 py-3 text-left font-medium text-gray-200 border-r border-gray-600">名称</th>
+                      <th class="w-32 px-4 py-3 text-center font-medium text-gray-200">数值</th>
+                    </tr>
+                  </thead>
                   
-                  <!-- 其他15行数据 -->
-                  {#each dataOut.slice(0, 15) as param, index}
-                    <tr class="border-b border-gray-600 hover:bg-gray-750 transition-colors {(index + 1) % 2 === 0 ? 'bg-gray-700' : 'bg-gray-600'}">
-                      <td class="px-4 py-3 text-gray-200 font-medium border-r border-gray-600">{param.name}</td>
-                      <td class="px-4 py-3 text-white font-mono text-right">{param.data[0]?.toFixed(2) || '0.00'}</td>
-                    </tr>
-                  {/each}
-                </tbody>
-              </table>
-            </div>
-
-            <!-- 第二个表格 -->
-            <div class="flex-1">
-              <table class="w-full h-full text-sm">
-                <!-- 表头 -->
-                <thead class="bg-gray-700">
-                  <tr>
-                    <th class="px-4 py-3 text-left font-medium text-gray-200 border-r border-gray-600">名称</th>
-                    <th class="px-4 py-3 text-right font-medium text-gray-200">数值</th>
-                  </tr>
-                </thead>
-                
-                <!-- 数据行 -->
-                <tbody>
-                  <!-- 16行数据 -->
-                  {#each dataOut.slice(15, 31) as param, index}
-                    <tr class="border-b border-gray-600 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-700' : 'bg-gray-600'}">
-                      <td class="px-4 py-3 text-gray-200 font-medium border-r border-gray-600">{param.name}</td>
-                      <td class="px-4 py-3 text-white font-mono text-right">{param.data[0]?.toFixed(2) || '0.00'}</td>
-                    </tr>
-                  {/each}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- 底部状态栏 -->
-          <div class="bg-gray-750 px-3 py-2 border-t border-gray-600 flex-shrink-0">
-            <div class="flex justify-between items-center text-xs text-gray-400">
-              <span>共 {dataOut.length + 1} 个参数</span>
-              <div class="flex items-center gap-2">
-                <div class="w-2 h-2 bg-green-500 rounded-full {isCalculating ? 'animate-pulse' : ''}"></div>
-                <span>{isCalculating ? '计算中...' : '实时更新'}</span>
+                  <!-- 数据行 -->
+                  <tbody>
+                    {#each dataOut.slice(0, 16) as param, index}
+                      <tr class="border-b border-gray-600 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
+                        <!-- 参数名称 -->
+                        <td class="px-4 py-3 text-gray-300 border-r border-gray-600">{param.name}</td>
+                        <!-- 数值 -->
+                        <td class="w-32 px-4 py-3 text-center text-white font-mono">{formatDisplayValue(param)}</td>
+                      </tr>
+                    {/each}
+                  </tbody>
+                </table>
               </div>
             </div>
-          </div>
-        {/if}
+          {/if}
+        </div>
+
+        <!-- 第二张表格：16个虚拟数据 -->
+        <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+          {#if showResults}
+            <div class="h-full flex flex-col">
+              <div class="flex-1 overflow-auto">
+                <table class="w-full text-sm">
+                  <!-- 表头 -->
+                  <thead class="bg-gray-700 sticky top-0">
+                    <tr>
+                      <th class="px-4 py-3 text-left font-medium text-gray-200 border-r border-gray-600">名称</th>
+                      <th class="w-32 px-4 py-3 text-center font-medium text-gray-200">数值</th>
+                    </tr>
+                  </thead>
+                  
+                  <!-- 数据行 -->
+                  <tbody>
+                    {#each dataOut.slice(16, 32) as param, index}
+                      <tr class="border-b border-gray-600 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
+                        <!-- 参数名称 -->
+                        <td class="px-4 py-3 text-gray-300 border-r border-gray-600">{param.name}</td>
+                        <!-- 数值 -->
+                        <td class="w-32 px-4 py-3 text-center text-white font-mono">{formatDisplayValue(param)}</td>
+                      </tr>
+                    {/each}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          {/if}
+        </div>
       </div>
     </div>
   </div>
