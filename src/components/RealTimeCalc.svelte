@@ -3,6 +3,7 @@
   import CurveChartManager from './CurveChartManager.svelte';
   import ChartDisplay from './ChartDisplay.svelte';
   import RealTimeMonitor from './RealTimeMonitor.svelte';
+  import Frame3183 from '../Frame3183.svg?raw';
 
   let isCalculating = $state(false);
   let isPaused = $state(false);
@@ -14,27 +15,24 @@
   let monitorModalPosition = $state({ x: 200, y: 150 });
   let monitorModalSize = $state({ width: 400, height: 500 });
 
-  // 初始默认值 - 用于重置
-  const initialInputParams = {
-    height: '0',
-    machNumber: '0',
-    temperature: '0',
-    gasFlowSystem: '-1',
-    powerConsumption: '0',
-    gasCompressionRatio: '0',
-    oilFieldAngle: '66.66'
-  };
+  // 输入数据结构 - dataIn格式
+  let dataIn = $state([
+    { name: "仿真步长", data: [0.025] },
+    { name: "作战", data: [1] },
+    { name: "训练", data: [0] },
+    { name: "地面", data: [1] },
+    { name: "空中", data: [0] },
+    { name: "高度", data: [0] },
+    { name: "马赫数", data: [0] },
+    { name: "温度修正", data: [0] },
+    { name: "进气道总压恢复系数", data: [-1] },
+    { name: "功率提取", data: [0] },
+    { name: "压气机出口座舱引气", data: [0] },
+    { name: "油门杆角度", data: [66.66] }
+  ]);
 
-  // 输入参数状态 - 修改默认值
-  const inputParams = $state({
-    height: '0',
-    machNumber: '0',
-    temperature: '0',
-    gasFlowSystem: '-1',
-    powerConsumption: '0',
-    gasCompressionRatio: '0',
-    oilFieldAngle: '66.66'
-  });
+  // 输出数据结构 - dataOut格式
+  let dataOut = $state<Array<{name: string, data: number[][]}>>([]);
 
   // 仿真步长状态 - 只能选择一个
   let selectedSimulationStep = $state('0.025');
@@ -43,46 +41,11 @@
   let selectedMode = $state('作战');
   let selectedEnvironment = $state('地面');
 
-  // 刻度组件状态 - 更精细的刻度
-  const scaleSettings = $state({
-    min: 0,
-    max: 120,
-    interval: 10, // 更精细的间隔
-    currentValue: 66.66
-  });
+  // 油门杆角度控制
+  let throttleValue = $state(66.66);
+  let isDraggingThrottle = $state(false);
 
-  // 初始曲线图数据 - 用于重置
-  const initialCurveCharts = [
-    {
-      id: 1,
-      name: '曲线图-1',
-      curves: [
-        { name: '高压涡轮出口总压' },
-        { name: '高压压气机出口总压' },
-        { name: '低压涡轮出口总压' }
-      ]
-    },
-    {
-      id: 2,
-      name: '曲线图-2', 
-      curves: [
-        { name: '高压涡轮出口总压' },
-        { name: '高压压气机出口总压' },
-        { name: '低压涡轮出口总压' }
-      ]
-    },
-    {
-      id: 3,
-      name: '曲线图-3',
-      curves: [
-        { name: '高压涡轮出口总压' },
-        { name: '高压压气机出口总压' },
-        { name: '低压涡轮出口总压' }
-      ]
-    }
-  ];
-
-  // 曲线图数据 - 可以动态添加和删除
+  // 初始曲线图数据
   let curveCharts = $state([
     {
       id: 1,
@@ -151,81 +114,76 @@
     { name: '循环压力损失系数', selected: false }
   ]);
 
-  // 简单图表数据存储
+  // 图表数据存储 - 基于dataOut渲染
   let chartData = $state<Map<number, Array<{time: number, values: number[]}>>>(new Map());
   let simulationTimer: number | null = null;
-  let timeCounter = $state(0);
 
-  // 后端返回的实时数据
-  let realtimeDataOut = $state<Array<{name: string, data: number[]}>>([]);
-
-  // 实时监控表格数据 - 从后端数据动态更新
+  // 实时监控表格数据
   let monitorTableData = $state<Array<{parameter: string, value: string}>>([]);
 
-  // 检查是否在Tauri环境中运行
-  function isTauriEnvironment(): boolean {
-    return typeof window !== 'undefined' && 
-           typeof window.__TAURI_IPC__ === 'function';
+  // 更新dataIn中的值
+  function updateDataInValue(name: string, value: number) {
+    const param = dataIn.find(p => p.name === name);
+    if (param) {
+      param.data = [value];
+    }
   }
 
-  // 构建传给后端的数据格式
-  function buildDataIN() {
-    return [
-      {
-        name: "仿真步长",
-        data: [parseFloat(selectedSimulationStep)]
-      },
-      {
-        name: selectedMode, // "作战" 或 "训练"
-        data: [selectedMode === '作战' ? 1 : 0]
-      },
-      {
-        name: selectedEnvironment, // "地面" 或 "空中"
-        data: [selectedEnvironment === '地面' ? 0 : 1]
-      },
-      {
-        name: "高度",
-        data: [parseFloat(inputParams.height) || 0]
-      },
-      {
-        name: "马赫数",
-        data: [parseFloat(inputParams.machNumber) || 0]
-      },
-      {
-        name: "温度修正",
-        data: [parseFloat(inputParams.temperature) || 0]
-      },
-      {
-        name: "进气道总压恢复系数",
-        data: [parseFloat(inputParams.gasFlowSystem) || -1]
-      },
-      {
-        name: "功率提取",
-        data: [parseFloat(inputParams.powerConsumption) || 0]
-      },
-      {
-        name: "压气机出口座舱引气",
-        data: [parseFloat(inputParams.gasCompressionRatio) || 0]
-      },
-      {
-        name: "油门杆角度",
-        data: [parseFloat(inputParams.oilFieldAngle) || 66.0]
-      }
-    ];
+  // 获取dataIn中的值
+  function getDataInValue(name: string): number {
+    const param = dataIn.find(p => p.name === name);
+    return param ? param.data[0] : 0;
+  }
+
+  // 更新所有dataIn状态
+  function updateAllDataIn() {
+    updateDataInValue("仿真步长", parseFloat(selectedSimulationStep));
+    updateDataInValue("作战", selectedMode === '作战' ? 1 : 0);
+    updateDataInValue("训练", selectedMode === '训练' ? 1 : 0);
+    updateDataInValue("地面", selectedEnvironment === '地面' ? 1 : 0);
+    updateDataInValue("空中", selectedEnvironment === '空中' ? 1 : 0);
+    updateDataInValue("油门杆角度", throttleValue);
+  }
+
+  // 油门杆角度SVG控制
+  function handleThrottleMouseDown(event: MouseEvent) {
+    isDraggingThrottle = true;
+    updateThrottleValue(event);
+  }
+
+  function handleThrottleMouseMove(event: MouseEvent) {
+    if (!isDraggingThrottle) return;
+    updateThrottleValue(event);
+  }
+
+  function handleThrottleMouseUp() {
+    isDraggingThrottle = false;
+  }
+
+  function updateThrottleValue(event: MouseEvent) {
+    const svgElement = event.currentTarget as SVGElement;
+    const rect = svgElement.getBoundingClientRect();
+    const y = event.clientY - rect.top;
+    
+    // SVG高度为381，有效范围从4到376（对应120到0度）
+    const svgHeight = 381;
+    const minY = 4;
+    const maxY = 376;
+    const clampedY = Math.max(minY, Math.min(maxY, y));
+    
+    // 计算角度值：y=4对应120度，y=376对应0度
+    const percentage = (clampedY - minY) / (maxY - minY);
+    throttleValue = 120 - (percentage * 120);
+    
+    // 更新dataIn
+    updateDataInValue("油门杆角度", throttleValue);
   }
 
   // 调用后端实时计算函数
   async function callRealtimeCalculation() {
     try {
-      // 检查是否在Tauri环境中
-      if (!isTauriEnvironment()) {
-        console.log('非Tauri环境，使用模拟数据');
-        return generateMockRealtimeData();
-      }
-
-      const dataIN = buildDataIN();
       const data = {
-        dataIN: dataIN,
+        dataIN: dataIn,
         type: "实时计算"
       };
       
@@ -243,131 +201,81 @@
     }
   }
 
-  // 生成模拟实时数据
+  // 生成模拟实时数据 - dataOut格式
   function generateMockRealtimeData() {
-    return [
+    const timePoints = 50; // 生成50个时间点的数据
+    const mockData = [
       {
         name: "高压涡轮出口总压",
-        data: [10 + Math.random() * 5]
+        data: Array.from({length: timePoints}, (_, i) => [i * 0.1, 10 + Math.sin(i * 0.2) * 3 + Math.random() * 2])
       },
       {
         name: "高压压气机出口总压", 
-        data: [15 + Math.random() * 3]
+        data: Array.from({length: timePoints}, (_, i) => [i * 0.1, 15 + Math.cos(i * 0.15) * 2 + Math.random() * 1.5])
       },
       {
         name: "低压涡轮出口总压",
-        data: [8 + Math.random() * 4]
+        data: Array.from({length: timePoints}, (_, i) => [i * 0.1, 8 + Math.sin(i * 0.25) * 2.5 + Math.random() * 1.8])
       },
       {
         name: "发动机净马力",
-        data: [1200 + Math.random() * 200]
+        data: Array.from({length: timePoints}, (_, i) => [i * 0.1, 1200 + Math.sin(i * 0.1) * 100 + Math.random() * 50])
       },
       {
         name: "发动机总马力",
-        data: [1400 + Math.random() * 150]
+        data: Array.from({length: timePoints}, (_, i) => [i * 0.1, 1400 + Math.cos(i * 0.12) * 80 + Math.random() * 40])
       },
       {
         name: "风扇出口总压",
-        data: [12 + Math.random() * 2]
-      },
-      {
-        name: "N1Cor",
-        data: [8542.3 + Math.random() * 100]
-      },
-      {
-        name: "N2Cor",
-        data: [12456.7 + Math.random() * 200]
-      },
-      {
-        name: "WTCor",
-        data: [245.8 + Math.random() * 20]
-      },
-      {
-        name: "F",
-        data: [15420.5 + Math.random() * 500]
-      },
-      {
-        name: "FG",
-        data: [16890.2 + Math.random() * 600]
-      },
-      {
-        name: "A8",
-        data: [0.245 + Math.random() * 0.05]
-      },
-      {
-        name: "A9",
-        data: [0.312 + Math.random() * 0.06]
-      },
-      {
-        name: "A16",
-        data: [0.156 + Math.random() * 0.03]
-      },
-      {
-        name: "T3",
-        data: [658.4 + Math.random() * 50]
-      },
-      {
-        name: "T41",
-        data: [1245.6 + Math.random() * 100]
-      },
-      {
-        name: "T43",
-        data: [1156.8 + Math.random() * 80]
-      },
-      {
-        name: "P21",
-        data: [2.45 + Math.random() * 0.5]
-      },
-      {
-        name: "P3",
-        data: [12.8 + Math.random() * 2]
-      },
-      {
-        name: "P41",
-        data: [11.2 + Math.random() * 1.5]
+        data: Array.from({length: timePoints}, (_, i) => [i * 0.1, 12 + Math.sin(i * 0.18) * 1.5 + Math.random() * 1])
       }
     ];
+    
+    return mockData;
   }
 
-  // 根据后端数据更新图表
-  function updateChartsFromBackendData(backendData: Array<{name: string, data: number[]}>) {
-    timeCounter += 1;
+  // 根据dataOut更新图表数据
+  function updateChartsFromDataOut(dataOutResult: Array<{name: string, data: number[][]}>) {
+    dataOut = dataOutResult;
     
     curveCharts.forEach(chart => {
-      const data = chartData.get(chart.id);
-      if (!data) return;
+      const chartDataPoints: Array<{time: number, values: number[]}> = [];
       
-      const values: number[] = [];
+      // 找到第一条曲线的数据来确定时间点数量
+      const firstCurve = chart.curves[0];
+      const firstCurveData = dataOut.find(d => d.name === firstCurve.name);
       
-      // 根据曲线名称从后端数据中获取对应值
-      chart.curves.forEach(curve => {
-        const backendParam = backendData.find(param => param.name === curve.name);
-        if (backendParam && backendParam.data.length > 0) {
-          values.push(backendParam.data[0]);
-        } else {
-          // 如果后端没有对应数据，使用默认值
-          values.push(10 + Math.random() * 5);
+      if (firstCurveData && firstCurveData.data.length > 0) {
+        // 遍历每个时间点
+        for (let timeIndex = 0; timeIndex < firstCurveData.data.length; timeIndex++) {
+          const values: number[] = [];
+          
+          // 为每条曲线获取对应时间点的值
+          chart.curves.forEach(curve => {
+            const curveData = dataOut.find(d => d.name === curve.name);
+            if (curveData && curveData.data[timeIndex]) {
+              values.push(curveData.data[timeIndex][1]); // 取y轴坐标
+            } else {
+              values.push(0); // 默认值
+            }
+          });
+          
+          chartDataPoints.push({
+            time: firstCurveData.data[timeIndex][0], // x轴坐标作为时间
+            values: values
+          });
         }
-      });
-      
-      // 添加新数据点
-      const newPoint = { time: timeCounter, values };
-      data.push(newPoint);
-      
-      // 保持最多100个数据点
-      if (data.length > 100) {
-        data.shift();
       }
       
-      chartData.set(chart.id, data);
+      chartData.set(chart.id, chartDataPoints);
     });
   }
 
   // 更新监控表格数据
-  function updateMonitorTableData(backendData: Array<{name: string, data: number[]}>) {
-    monitorTableData = backendData.map(item => ({
+  function updateMonitorTableData(dataOutResult: Array<{name: string, data: number[][]}>) {
+    monitorTableData = dataOutResult.map(item => ({
       parameter: item.name,
-      value: item.data.length > 0 ? item.data[0].toFixed(3) : '0.000'
+      value: item.data.length > 0 ? item.data[item.data.length - 1][1].toFixed(3) : '0.000' // 取最后一个时间点的值
     }));
   }
 
@@ -376,62 +284,35 @@
     if (!isCalculating || isPaused) return;
     
     try {
+      // 更新dataIn
+      updateAllDataIn();
+      
       // 调用后端获取实时数据
       const backendData = await callRealtimeCalculation();
       
-      // 更新存储的后端数据
+      // 更新dataOut和图表
       if (Array.isArray(backendData)) {
-        realtimeDataOut = backendData;
-        // 根据后端数据更新图表
-        updateChartsFromBackendData(backendData);
-        // 更新监控表格数据
+        updateChartsFromDataOut(backendData);
         updateMonitorTableData(backendData);
       } else {
         // 如果后端数据格式不正确，使用模拟数据
         const mockData = generateMockRealtimeData();
-        realtimeDataOut = mockData;
-        updateChartsFromBackendData(mockData);
+        updateChartsFromDataOut(mockData);
         updateMonitorTableData(mockData);
       }
     } catch (error) {
       console.error('实时数据更新失败:', error);
       // 出错时使用模拟数据
       const mockData = generateMockRealtimeData();
-      realtimeDataOut = mockData;
-      updateChartsFromBackendData(mockData);
+      updateChartsFromDataOut(mockData);
       updateMonitorTableData(mockData);
     }
   }
 
-  // 初始化图表数据 - 一开始为空数据
+  // 初始化图表数据
   function initializeChartData(chartId: number, curves: any[]) {
     const data: Array<{time: number, values: number[]}> = [];
     chartData.set(chartId, data);
-  }
-
-  // 刻度拖拽状态
-  let isDraggingScale = $state(false);
-
-  function handleScaleMouseDown(event: MouseEvent) {
-    isDraggingScale = true;
-    updateScaleValue(event);
-  }
-
-  function handleScaleMouseMove(event: MouseEvent) {
-    if (!isDraggingScale) return;
-    updateScaleValue(event);
-  }
-
-  function handleScaleMouseUp() {
-    isDraggingScale = false;
-  }
-
-  function updateScaleValue(event: MouseEvent) {
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    const y = event.clientY - rect.top;
-    const percentage = Math.max(0, Math.min(1, 1 - (y / rect.height)));
-    scaleSettings.currentValue = scaleSettings.min + (scaleSettings.max - scaleSettings.min) * percentage;
-    inputParams.oilFieldAngle = scaleSettings.currentValue.toFixed(2);
   }
 
   async function handleStart() {
@@ -444,13 +325,16 @@
       isCalculating = true;
       
       try {
+        // 更新dataIn
+        updateAllDataIn();
+        
         // 首次调用后端获取初始数据
         console.log('开始实时计算，首次调用后端...');
         const initialData = await callRealtimeCalculation();
         console.log('首次后端调用成功:', initialData);
         
         if (Array.isArray(initialData)) {
-          realtimeDataOut = initialData;
+          updateChartsFromDataOut(initialData);
           updateMonitorTableData(initialData);
         }
         
@@ -513,28 +397,35 @@
     
     // 清理图表数据
     chartData.clear();
-    timeCounter = 0;
-    realtimeDataOut = [];
+    dataOut = [];
     monitorTableData = [];
     
-    // 重置输入参数到初始默认值
-    Object.keys(initialInputParams).forEach(key => {
-      inputParams[key] = initialInputParams[key];
-    });
+    // 重置dataIn到初始状态
+    dataIn = [
+      { name: "仿真步长", data: [0.025] },
+      { name: "作战", data: [1] },
+      { name: "训练", data: [0] },
+      { name: "地面", data: [1] },
+      { name: "空中", data: [0] },
+      { name: "高度", data: [0] },
+      { name: "马赫数", data: [0] },
+      { name: "温度修正", data: [0] },
+      { name: "进气道总压恢复系数", data: [-1] },
+      { name: "功率提取", data: [0] },
+      { name: "压气机出口座舱引气", data: [0] },
+      { name: "油门杆角度", data: [66.66] }
+    ];
     
     // 重置存储路径
     storagePath = '';
     
-    // 重置刻度设置
-    scaleSettings.currentValue = 66.66;
+    // 重置油门杆角度
+    throttleValue = 66.66;
     
     // 重置用户选择到初始状态
     selectedSimulationStep = '0.025';
     selectedMode = '作战';
     selectedEnvironment = '地面';
-    
-    // 重置曲线图到初始状态
-    curveCharts = JSON.parse(JSON.stringify(initialCurveCharts));
     
     // 重置参数列表选择状态
     leftParameterList.forEach(p => p.selected = false);
@@ -557,8 +448,8 @@
     try {
       const exportData = {
         timestamp: new Date().toISOString(),
-        inputParams: inputParams,
-        realtimeData: realtimeDataOut,
+        dataIn: dataIn,
+        dataOut: dataOut,
         chartData: Array.from(chartData.entries()).map(([id, data]) => ({
           chartId: id,
           chartName: curveCharts.find(c => c.id === id)?.name || `图表-${id}`,
@@ -618,14 +509,19 @@
       }
     });
   });
+
+  // 监听选择变化，自动更新dataIn
+  $effect(() => {
+    updateAllDataIn();
+  });
 </script>
 
 <svelte:window 
   onmousemove={(e) => {
-    handleScaleMouseMove(e);
+    handleThrottleMouseMove(e);
   }} 
   onmouseup={() => {
-    handleScaleMouseUp();
+    handleThrottleMouseUp();
   }} 
 />
 
@@ -763,55 +659,21 @@
         <!-- 油门杆角度和输入参数 - 增加高度，修复显示问题 -->
         <div class="p-4 flex-1 overflow-visible">
           <div class="flex items-start gap-4 h-full">
-            <!-- 左侧：油门杆角度温度计 - 增加高度，更精细刻度 -->
+            <!-- 左侧：油门杆角度SVG控制器 -->
             <div class="flex-shrink-0">
               <h3 class="text-xs text-gray-300 mb-3">油门杆角度</h3>
               <div class="relative">
+                <!-- SVG油门杆控制器 -->
                 <div 
-                  class="w-8 h-80 bg-gray-700 rounded cursor-pointer relative"
-                  onmousedown={handleScaleMouseDown}
+                  class="cursor-pointer"
+                  onmousedown={handleThrottleMouseDown}
                 >
-                  <!-- 主刻度标记 -->
-                  {#each Array(13) as _, i}
-                    {@const value = scaleSettings.max - (i * scaleSettings.interval)}
-                    <div class="absolute left-0 flex items-center" style="top: {i * 24}px;">
-                      <div class="w-3 h-0.5 bg-gray-400"></div>
-                      <span class="text-xs text-gray-400 ml-2 font-mono whitespace-nowrap">{value}</span>
-                    </div>
-                  {/each}
-
-                  <!-- 小刻度标记 -->
-                  {#each Array(25) as _, i}
-                    {@const isMainScale = i % 2 === 0}
-                    {#if !isMainScale}
-                      <div class="absolute left-0" style="top: {i * 12}px;">
-                        <div class="w-1.5 h-0.5 bg-gray-500"></div>
-                      </div>
-                    {/if}
-                  {/each}
-
-                  <!-- 初始位置竖线 -->
-                  <div class="absolute left-0 w-0.5 h-full bg-gray-500 opacity-50"></div>
-
-                  <!-- 当前值指示器和滑块 -->
-                  {#each [scaleSettings] as settings}
-                    {@const percentage = (settings.currentValue - settings.min) / (settings.max - settings.min)}
-                    <div 
-                      class="absolute w-full h-1 bg-blue-500 rounded"
-                      style="bottom: {percentage * 100}%; transform: translateY(50%);"
-                    ></div>
-                    
-                    <!-- 滑块 -->
-                    <div 
-                      class="absolute w-4 h-4 bg-blue-500 rounded-full border-2 border-white cursor-pointer transform -translate-x-1/2"
-                      style="bottom: {percentage * 100}%; left: 50%; transform: translate(-50%, 50%);"
-                    ></div>
-                  {/each}
+                  {@html Frame3183}
                 </div>
                 
                 <!-- 当前值显示 -->
                 <div class="text-center mt-2">
-                  <span class="text-xs text-white font-mono">{scaleSettings.currentValue.toFixed(2)}/deg</span>
+                  <span class="text-xs text-white font-mono">{throttleValue.toFixed(2)}°</span>
                 </div>
               </div>
             </div>
@@ -827,7 +689,8 @@
                 <div class="relative">
                   <input
                     type="text"
-                    bind:value={inputParams.height}
+                    value={getDataInValue("高度")}
+                    oninput={(e) => updateDataInValue("高度", parseFloat(e.target.value) || 0)}
                     class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent pr-6"
                   />
                   <span class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs">m</span>
@@ -839,7 +702,8 @@
                 <label class="text-xs text-gray-300 block">马赫数(0~2.5)</label>
                 <input
                   type="text"
-                  bind:value={inputParams.machNumber}
+                  value={getDataInValue("马赫数")}
+                  oninput={(e) => updateDataInValue("马赫数", parseFloat(e.target.value) || 0)}
                   class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
                 />
               </div>
@@ -850,7 +714,8 @@
                 <div class="relative">
                   <input
                     type="text"
-                    bind:value={inputParams.temperature}
+                    value={getDataInValue("温度修正")}
+                    oninput={(e) => updateDataInValue("温度修正", parseFloat(e.target.value) || 0)}
                     class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent pr-6"
                   />
                   <span class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs">K</span>
@@ -862,7 +727,8 @@
                 <label class="text-xs text-gray-300 block">进气道总压恢复系数(0~1.1)</label>
                 <input
                   type="text"
-                  bind:value={inputParams.gasFlowSystem}
+                  value={getDataInValue("进气道总压恢复系数")}
+                  oninput={(e) => updateDataInValue("进气道总压恢复系数", parseFloat(e.target.value) || -1)}
                   class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
                 />
               </div>
@@ -873,7 +739,8 @@
                 <div class="relative">
                   <input
                     type="text"
-                    bind:value={inputParams.powerConsumption}
+                    value={getDataInValue("功率提取")}
+                    oninput={(e) => updateDataInValue("功率提取", parseFloat(e.target.value) || 0)}
                     class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent pr-6"
                   />
                   <span class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs">W</span>
@@ -886,7 +753,8 @@
                 <div class="relative">
                   <input
                     type="text"
-                    bind:value={inputParams.gasCompressionRatio}
+                    value={getDataInValue("压气机出口座舱引气")}
+                    oninput={(e) => updateDataInValue("压气机出口座舱引气", parseFloat(e.target.value) || 0)}
                     class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent pr-8"
                   />
                   <span class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs">%</span>
