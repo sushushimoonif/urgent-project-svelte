@@ -734,8 +734,8 @@
                     <text x="-1" y="9" fill="white" fill-opacity="0.7" font-size="12">120</text>
                     <text x="-1" y="70" fill="white" fill-opacity="0.7" font-size="12">100</text>
                     <text x="3" y="132" fill="white" fill-opacity="0.7" font-size="12">80</text>
-                    <text x="3" y="194" fill="white" fill-opacity="0.7" font-size="12">60</text>
-                    <text x="3" y="259" fill="white" fill-opacity="0.7" font-size="12">40</text>
+                    <text x="3" y="192" fill="white" fill-opacity="0.7" font-size="12">60</text>
+                    <text x="3" y="257" fill="white" fill-opacity="0.7" font-size="12">40</text>
                     <text x="3" y="321" fill="white" fill-opacity="0.7" font-size="12">20</text>
                     <text x="5" y="380" fill="white" fill-opacity="0.7" font-size="12">0</text>
                     
