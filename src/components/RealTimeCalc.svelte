@@ -737,7 +737,7 @@
                     <text x="3" y="194" fill="white" fill-opacity="0.7" font-size="12">60</text>
                     <text x="3" y="259" fill="white" fill-opacity="0.7" font-size="12">40</text>
                     <text x="3" y="321" fill="white" fill-opacity="0.7" font-size="12">20</text>
-                    <text x="3" y="380" fill="white" fill-opacity="0.7" font-size="12">0</text>
+                    <text x="4" y="380" fill="white" fill-opacity="0.7" font-size="12">0</text>
                     
                     <!-- 主刻度线 -->
                     <line x1="22.5" y1="4" x2="32.5" y2="4" stroke="white" stroke-opacity="0.7"/>
