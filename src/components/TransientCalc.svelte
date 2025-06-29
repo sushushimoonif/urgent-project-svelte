@@ -203,6 +203,8 @@
         const parameterName = row[0];
         const defaultValue = parameterName.includes('模式') ? '作战' : 
                            parameterName.includes('状态') ? '地面' : '0';
+
+        
         return [...row, defaultValue];
       }
     });
