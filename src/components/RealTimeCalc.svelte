@@ -728,7 +728,7 @@
                   onmousedown={handleThrottleMouseDown}
                   style="width: 50px; height: 381px;"
                 >
-                  <!-- SVG背景 -->
+                  <!-- SVG背景 - 基于Frame3183.svg -->
                   <svg width="50" height="381" viewBox="0 0 50 381" fill="none" xmlns="http://www.w3.org/2000/svg" class="absolute inset-0">
                     <!-- 刻度数字 -->
                     <text x="5" y="12" fill="white" fill-opacity="0.7" font-size="12">120</text>
@@ -760,16 +760,17 @@
                     <rect x="37.5" y="2.5" width="3" height="369" rx="1.5" fill="#141414"/>
                   </svg>
                   
-                  <!-- 滑块指示器 -->
+                  <!-- 可拖动的蓝色滑块 -->
                   {#each [throttleValue] as value}
                     {@const percentage = (120 - value) / 120}
                     {@const sliderY = 4 + percentage * 372}
-                    <div class="absolute" style="top: {sliderY - 5.5}px; left: 36.5px;">
+                    <div class="absolute pointer-events-none" style="top: {sliderY - 5.5}px; left: 36.5px;">
                       <!-- 滑块主体 -->
-                      <rect width="4" height="11" rx="1.5" fill="#3598DB" stroke="#3598DB"/>
+                      <div class="w-1 h-3 bg-blue-500 rounded-sm"></div>
                       <!-- 滑块手柄 -->
-                      <rect x="28" y="3" width="21" height="5" rx="1.5" fill="#141414" stroke="#3598DB"/>
-                      <rect x="32.5" y="4.5" width="12" height="2" rx="1" fill="#3598DB"/>
+                      <div class="absolute -left-2.5 top-0.5 w-6 h-2 bg-gray-800 border border-blue-500 rounded-sm flex items-center justify-center">
+                        <div class="w-3 h-0.5 bg-blue-500 rounded"></div>
+                      </div>
                     </div>
                   {/each}
                 </div>
