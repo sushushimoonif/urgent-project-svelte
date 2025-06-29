@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { invoke } from "@tauri-apps/api/core";
+  import { invoke } from "@tauri-apps/api/tauri";
 
   let isCalculating = $state(false);
   let showResults = $state(true); // 页面加载时立即显示结果
@@ -77,12 +77,6 @@
     { name: "比冲/s", data: [1890.50] }
   ]);
 
-  // 检查是否在 Tauri 环境中
-  function isTauriEnvironment(): boolean {
-    return typeof window !== 'undefined' && 
-           typeof window.__TAURI_IPC__ === 'function';
-  }
-
   // 更新dataIN中的选项状态
   function updateDataINOptions() {
     // 更新仿真步长
@@ -140,23 +134,12 @@
     dataOut = [...dataOut];
   }
 
-  // 调用后端计算函数 - 添加环境检查
+  // 调用后端计算函数
   async function callSteadyStateCalculation(data: any) {
     try {
-      // 检查是否在 Tauri 环境中
-      if (isTauriEnvironment()) {
-        // 在 Tauri 环境中，使用 invoke 调用后端
-        const result = await invoke("transient_calculation", data);
-        return result;
-      } else {
-        // 在浏览器环境中，返回模拟成功结果
-        console.log('运行在浏览器环境中，使用模拟数据');
-        return {
-          success: true,
-          message: '浏览器环境模拟计算完成',
-          dataOut: null
-        };
-      }
+      // 使用 invoke 调用后端
+      const result = await invoke("transient_calculation", data);
+      return result;
     } catch (error) {
       console.error('计算调用失败:', error);
       // 如果调用失败，返回模拟结果作为后备
@@ -225,6 +208,11 @@
       const value = param.data[0];
       return typeof value === 'number' ? value.toFixed(2) : '0.00';
     }
+  }
+
+  // 获取仿真步长的显示值
+  function getSimulationStepValue(): string {
+    return selectedSimulationStep;
   }
 </script>
 
@@ -317,7 +305,7 @@
         </div>
       </div>
 
-      <!-- 右侧两张表格 --->
+      <!-- 右侧两张表格 -->
       <div class="flex-1 flex gap-4">
         <!-- 第一张表格：仿真步长 + 15个虚拟数据 -->
         <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
@@ -335,11 +323,16 @@
                   
                   <!-- 数据行 -->
                   <tbody>
-                    {#each dataOut.slice(0, 16) as param, index}
-                      <tr class="border-b border-gray-600 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
-                        <!-- 参数名称 -->
-                        <td class="px-4 py-3 text-gray-300 border-r border-gray-600">{param.name}</td>
-                        <!-- 数值 -->
+                    <!-- 仿真步长行 -->
+                    <tr class="border-b border-gray-600 hover:bg-gray-750 transition-colors bg-gray-800">
+                      <td class="px-4 py-3 text-gray-300 border-r border-gray-600 font-medium">仿真步长</td>
+                      <td class="w-32 px-4 py-3 text-center text-white font-mono">{getSimulationStepValue()}</td>
+                    </tr>
+                    
+                    <!-- 其他数据行 -->
+                    {#each dataOut.slice(1, 16) as param, index}
+                      <tr class="border-b border-gray-600 hover:bg-gray-750 transition-colors {(index + 1) % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
+                        <td class="px-4 py-3 text-gray-300 border-r border-gray-600 font-medium">{param.name}</td>
                         <td class="w-32 px-4 py-3 text-center text-white font-mono">{formatDisplayValue(param)}</td>
                       </tr>
                     {/each}
@@ -368,9 +361,7 @@
                   <tbody>
                     {#each dataOut.slice(16, 32) as param, index}
                       <tr class="border-b border-gray-600 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
-                        <!-- 参数名称 -->
-                        <td class="px-4 py-3 text-gray-300 border-r border-gray-600">{param.name}</td>
-                        <!-- 数值 -->
+                        <td class="px-4 py-3 text-gray-300 border-r border-gray-600 font-medium">{param.name}</td>
                         <td class="w-32 px-4 py-3 text-center text-white font-mono">{formatDisplayValue(param)}</td>
                       </tr>
                     {/each}
