@@ -38,40 +38,39 @@
   let selectedMode = $state('作战');
   let selectedEnvironment = $state('地面');
 
-  // 输出参数 - 修改为dataOut，仿真步长作为第一行，总共32条数据
+  // 输出参数 - 修改为dataOut，31条数据（不包含仿真步长，仿真步长单独处理）
   let dataOut = $state([
-    { name: "仿真步长", data: [0] }, // 第1行：仿真步长
-    { name: "仿真步长", data: [22000.00] }, // 第2行：仿真步长
-    { name: "低压轴换算转速", data: [1.33] }, // 第3行
-    { name: "高压轴换算转速", data: [300.66] }, // 第4行
-    { name: "发动机进口换算流量/kg/s", data: [200000.00] }, // 第5行
-    { name: "发动机净推力/kN", data: [300.55] }, // 第6行
-    { name: "发动机总推力/kN", data: [114.33] }, // 第7行
-    { name: "发动机进口冲压阻力/kN", data: [300.55] }, // 第8行
-    { name: "发动机总耗油量/kg/h", data: [111111] }, // 第9行
-    { name: "主燃烧室耗油量/kg/h", data: [1345567] }, // 第10行
-    { name: "加力燃烧室耗油量/kg/h", data: [31311] }, // 第11行
-    { name: "喷管喉道面积/m²", data: [231] }, // 第12行
-    { name: "喷管出口面积/m²", data: [12312] }, // 第13行
-    { name: "风扇出口温度/K", data: [5678] }, // 第14行
-    { name: "高压压气机出口温度/K", data: [906534] }, // 第15行
-    { name: "高压涡轮进口温度/K", data: [24234] }, // 第16行
-    { name: "低压涡轮进口温度/K", data: [0] }, // 第17行
-    { name: "低压轴换算转速", data: [22000.00] }, // 第18行
-    { name: "高压轴换算转速", data: [1.33] }, // 第19行
-    { name: "发动机进口换算流量/kg/s", data: [300.66] }, // 第20行
-    { name: "发动机净推力/kN", data: [200000.00] }, // 第21行
-    { name: "发动机总推力/kN", data: [300.55] }, // 第22行
-    { name: "发动机进口冲压阻力/kN", data: [114.33] }, // 第23行
-    { name: "发动机总耗油量/kg/h", data: [300.55] }, // 第24行
-    { name: "主燃烧室耗油量/kg/h", data: [111111] }, // 第25行
-    { name: "加力燃烧室耗油量/kg/h", data: [1345567] }, // 第26行
-    { name: "喷管喉道面积/m²", data: [31311] }, // 第27行
-    { name: "喷管出口面积/m²", data: [231] }, // 第28行
-    { name: "风扇出口温度/K", data: [12312] }, // 第29行
-    { name: "高压压气机出口温度/K", data: [5678] }, // 第30行
-    { name: "高压涡轮进口温度/K", data: [906534] }, // 第31行
-    { name: "低压涡轮进口温度/K", data: [24234] } // 第32行
+    { name: "低压轴换算转速", data: [22000.00] },
+    { name: "高压轴换算转速", data: [1.33] },
+    { name: "发动机进口换算流量/kg/s", data: [300.66] },
+    { name: "发动机净推力/kN", data: [200000.00] },
+    { name: "发动机总推力/kN", data: [300.55] },
+    { name: "发动机进口冲压阻力/kN", data: [114.33] },
+    { name: "发动机总耗油量/kg/h", data: [300.55] },
+    { name: "主燃烧室耗油量/kg/h", data: [111111] },
+    { name: "加力燃烧室耗油量/kg/h", data: [1345567] },
+    { name: "喷管喉道面积/m²", data: [31311] },
+    { name: "喷管出口面积/m²", data: [231] },
+    { name: "风扇出口温度/K", data: [12312] },
+    { name: "高压压气机出口温度/K", data: [5678] },
+    { name: "高压涡轮进口温度/K", data: [906534] },
+    { name: "低压涡轮进口温度/K", data: [24234] },
+    { name: "低压轴换算转速", data: [22000.00] },
+    { name: "高压轴换算转速", data: [1.33] },
+    { name: "发动机进口换算流量/kg/s", data: [300.66] },
+    { name: "发动机净推力/kN", data: [200000.00] },
+    { name: "发动机总推力/kN", data: [300.55] },
+    { name: "发动机进口冲压阻力/kN", data: [114.33] },
+    { name: "发动机总耗油量/kg/h", data: [300.55] },
+    { name: "主燃烧室耗油量/kg/h", data: [111111] },
+    { name: "加力燃烧室耗油量/kg/h", data: [1345567] },
+    { name: "喷管喉道面积/m²", data: [31311] },
+    { name: "喷管出口面积/m²", data: [231] },
+    { name: "风扇出口温度/K", data: [12312] },
+    { name: "高压压气机出口温度/K", data: [5678] },
+    { name: "高压涡轮进口温度/K", data: [906534] },
+    { name: "低压涡轮进口温度/K", data: [24234] },
+    { name: "额外参数", data: [0] }
   ]);
 
   // 更新dataIN中的选项状态
@@ -107,12 +106,6 @@
         airParam.data = [0];
       }
     }
-
-    // 更新输出参数中的仿真步长
-    const outputStepParam = dataOut.find(p => p.name === "仿真步长");
-    if (outputStepParam) {
-      outputStepParam.data = [parseFloat(selectedSimulationStep)];
-    }
   }
 
   // 更新输出参数的值 - 根据后端返回的dataOut更新
@@ -131,11 +124,11 @@
   function generateMockDataOut() {
     return dataOut.map(param => ({
       name: param.name,
-      data: param.name === "仿真步长" ? [parseFloat(selectedSimulationStep)] : [(Math.random() * 100 + 50)] // 仿真步长保持选择的值，其他生成随机数
+      data: [(Math.random() * 100 + 50)] // 生成随机数
     }));
   }
 
-  // 调用后端计算函数 - 直接使用invoke函数，去掉环境判断
+  // 调用后端计算函数 - 直接使用invoke函数
   async function callSteadyStateCalculation(data: any) {
     try {
       // 直接使用 Tauri invoke 调用后端的 transient_calculation 函数
@@ -205,6 +198,11 @@
       const numValue = parseFloat(value) || 0;
       param.data = [numValue];
     }
+  }
+
+  // 获取仿真步长的值
+  function getSimulationStepValue(): number {
+    return parseFloat(selectedSimulationStep);
   }
 </script>
 
@@ -297,55 +295,72 @@
         </div>
       </div>
 
-      <!-- 右侧参数列表 - 按照图片样式修改 -->
+      <!-- 右侧参数列表 - 使用两个独立的table -->
       <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
         {#if showResults}
-          <div class="h-full flex flex-col">
-            <!-- 参数列表内容 - 32条数据，按照图片样式布局 -->
-            <div class="flex-1 overflow-hidden">
-              <div class="h-full grid grid-cols-2 gap-0">
-                <!-- 左列：参数1-16 -->
-                <div class="border-r border-gray-600 overflow-hidden">
-                  {#each dataOut.slice(0, 16) as param, index}
-                    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-600 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-700' : 'bg-gray-600'} h-[calc((100vh-200px)/16)]">
-                      <!-- 参数名称 -->
-                      <div class="flex-1 text-sm text-gray-200 font-medium">
-                        {param.name}
-                      </div>
-                      <!-- 数值 -->
-                      <div class="text-sm text-white font-mono text-right">
-                        {param.data[0]?.toFixed(2) || '0.00'}
-                      </div>
-                    </div>
+          <div class="h-full flex">
+            <!-- 第一个表格 -->
+            <div class="flex-1 border-r border-gray-600">
+              <table class="w-full h-full text-sm">
+                <!-- 表头 -->
+                <thead class="bg-gray-700">
+                  <tr>
+                    <th class="px-4 py-3 text-left font-medium text-gray-200 border-r border-gray-600">名称</th>
+                    <th class="px-4 py-3 text-right font-medium text-gray-200">数值</th>
+                  </tr>
+                </thead>
+                
+                <!-- 数据行 -->
+                <tbody>
+                  <!-- 第一行：仿真步长 -->
+                  <tr class="border-b border-gray-600 hover:bg-gray-750 transition-colors bg-gray-700">
+                    <td class="px-4 py-3 text-gray-200 font-medium border-r border-gray-600">仿真步长</td>
+                    <td class="px-4 py-3 text-white font-mono text-right">{getSimulationStepValue().toFixed(3)}</td>
+                  </tr>
+                  
+                  <!-- 其他15行数据 -->
+                  {#each dataOut.slice(0, 15) as param, index}
+                    <tr class="border-b border-gray-600 hover:bg-gray-750 transition-colors {(index + 1) % 2 === 0 ? 'bg-gray-700' : 'bg-gray-600'}">
+                      <td class="px-4 py-3 text-gray-200 font-medium border-r border-gray-600">{param.name}</td>
+                      <td class="px-4 py-3 text-white font-mono text-right">{param.data[0]?.toFixed(2) || '0.00'}</td>
+                    </tr>
                   {/each}
-                </div>
-
-                <!-- 右列：参数17-32 -->
-                <div class="overflow-hidden">
-                  {#each dataOut.slice(16, 32) as param, index}
-                    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-600 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-700' : 'bg-gray-600'} h-[calc((100vh-200px)/16)]">
-                      <!-- 参数名称 -->
-                      <div class="flex-1 text-sm text-gray-200 font-medium">
-                        {param.name}
-                      </div>
-                      <!-- 数值 -->
-                      <div class="text-sm text-white font-mono text-right">
-                        {param.data[0]?.toFixed(2) || '0.00'}
-                      </div>
-                    </div>
-                  {/each}
-                </div>
-              </div>
+                </tbody>
+              </table>
             </div>
 
-            <!-- 底部状态栏 -->
-            <div class="bg-gray-750 px-3 py-2 border-t border-gray-600 flex-shrink-0">
-              <div class="flex justify-between items-center text-xs text-gray-400">
-                <span>共 {dataOut.length} 个参数</span>
-                <div class="flex items-center gap-2">
-                  <div class="w-2 h-2 bg-green-500 rounded-full {isCalculating ? 'animate-pulse' : ''}"></div>
-                  <span>{isCalculating ? '计算中...' : '实时更新'}</span>
-                </div>
+            <!-- 第二个表格 -->
+            <div class="flex-1">
+              <table class="w-full h-full text-sm">
+                <!-- 表头 -->
+                <thead class="bg-gray-700">
+                  <tr>
+                    <th class="px-4 py-3 text-left font-medium text-gray-200 border-r border-gray-600">名称</th>
+                    <th class="px-4 py-3 text-right font-medium text-gray-200">数值</th>
+                  </tr>
+                </thead>
+                
+                <!-- 数据行 -->
+                <tbody>
+                  <!-- 16行数据 -->
+                  {#each dataOut.slice(15, 31) as param, index}
+                    <tr class="border-b border-gray-600 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-700' : 'bg-gray-600'}">
+                      <td class="px-4 py-3 text-gray-200 font-medium border-r border-gray-600">{param.name}</td>
+                      <td class="px-4 py-3 text-white font-mono text-right">{param.data[0]?.toFixed(2) || '0.00'}</td>
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 底部状态栏 -->
+          <div class="bg-gray-750 px-3 py-2 border-t border-gray-600 flex-shrink-0">
+            <div class="flex justify-between items-center text-xs text-gray-400">
+              <span>共 {dataOut.length + 1} 个参数</span>
+              <div class="flex items-center gap-2">
+                <div class="w-2 h-2 bg-green-500 rounded-full {isCalculating ? 'animate-pulse' : ''}"></div>
+                <span>{isCalculating ? '计算中...' : '实时更新'}</span>
               </div>
             </div>
           </div>
