@@ -166,17 +166,11 @@
   let simulationTimer: number | null = null;
   let timeCounter = $state(0);
 
-  // 后端返回的实时数据
-  let realtimeDataOut = $state<Array<{name: string, data: number[]}>>([]);
+  // 后端返回的实时数据 - 修改为dataIn格式
+  let realtimeDataIn = $state<Array<{name: string, data: number[]}>>([]);
 
   // 实时监控表格数据 - 从后端数据动态更新
   let monitorTableData = $state<Array<{parameter: string, value: string}>>([]);
-
-  // 检查是否在Tauri环境中运行
-  function isTauriEnvironment(): boolean {
-    return typeof window !== 'undefined' && 
-           typeof window.__TAURI_IPC__ === 'function';
-  }
 
   // 构建传给后端的数据格式
   function buildDataIN() {
@@ -227,12 +221,6 @@
   // 调用后端实时计算函数
   async function callRealtimeCalculation() {
     try {
-      // 检查是否在Tauri环境中
-      if (!isTauriEnvironment()) {
-        console.log('非Tauri环境，使用模拟数据');
-        return generateMockRealtimeData();
-      }
-
       const dataIN = buildDataIN();
       const data = {
         dataIN: dataIN,
@@ -249,12 +237,12 @@
     } catch (error) {
       console.error('后端调用失败:', error);
       // 返回模拟数据作为fallback
-      return generateMockRealtimeData();
+      return generateMockRealtimeDataIn();
     }
   }
 
-  // 生成模拟实时数据
-  function generateMockRealtimeData() {
+  // 生成模拟实时数据 - 修改为dataIn格式
+  function generateMockRealtimeDataIn() {
     return [
       {
         name: "高压涡轮出口总压",
@@ -339,8 +327,8 @@
     ];
   }
 
-  // 根据后端数据更新图表
-  function updateChartsFromBackendData(backendData: Array<{name: string, data: number[]}>) {
+  // 根据后端数据更新图表 - 修改为从dataIn获取数据
+  function updateChartsFromDataIn(dataIn: Array<{name: string, data: number[]}>) {
     timeCounter += 1;
     
     curveCharts.forEach(chart => {
@@ -349,13 +337,13 @@
       
       const values: number[] = [];
       
-      // 根据曲线名称从后端数据中获取对应值
+      // 根据曲线名称从dataIn中获取对应值
       chart.curves.forEach(curve => {
-        const backendParam = backendData.find(param => param.name === curve.name);
-        if (backendParam && backendParam.data.length > 0) {
-          values.push(backendParam.data[0]);
+        const dataInParam = dataIn.find(param => param.name === curve.name);
+        if (dataInParam && dataInParam.data.length > 0) {
+          values.push(dataInParam.data[0]);
         } else {
-          // 如果后端没有对应数据，使用默认值
+          // 如果dataIn没有对应数据，使用默认值
           values.push(10 + Math.random() * 5);
         }
       });
@@ -373,9 +361,9 @@
     });
   }
 
-  // 更新监控表格数据
-  function updateMonitorTableData(backendData: Array<{name: string, data: number[]}>) {
-    monitorTableData = backendData.map(item => ({
+  // 更新监控表格数据 - 修改为从dataIn获取数据
+  function updateMonitorTableData(dataIn: Array<{name: string, data: number[]}>) {
+    monitorTableData = dataIn.map(item => ({
       parameter: item.name,
       value: item.data.length > 0 ? item.data[0].toFixed(3) : '0.000'
     }));
@@ -387,29 +375,29 @@
     
     try {
       // 调用后端获取实时数据
-      const backendData = await callRealtimeCalculation();
+      const backendDataIn = await callRealtimeCalculation();
       
       // 更新存储的后端数据
-      if (Array.isArray(backendData)) {
-        realtimeDataOut = backendData;
-        // 根据后端数据更新图表
-        updateChartsFromBackendData(backendData);
+      if (Array.isArray(backendDataIn)) {
+        realtimeDataIn = backendDataIn;
+        // 根据dataIn数据更新图表
+        updateChartsFromDataIn(backendDataIn);
         // 更新监控表格数据
-        updateMonitorTableData(backendData);
+        updateMonitorTableData(backendDataIn);
       } else {
         // 如果后端数据格式不正确，使用模拟数据
-        const mockData = generateMockRealtimeData();
-        realtimeDataOut = mockData;
-        updateChartsFromBackendData(mockData);
-        updateMonitorTableData(mockData);
+        const mockDataIn = generateMockRealtimeDataIn();
+        realtimeDataIn = mockDataIn;
+        updateChartsFromDataIn(mockDataIn);
+        updateMonitorTableData(mockDataIn);
       }
     } catch (error) {
       console.error('实时数据更新失败:', error);
       // 出错时使用模拟数据
-      const mockData = generateMockRealtimeData();
-      realtimeDataOut = mockData;
-      updateChartsFromBackendData(mockData);
-      updateMonitorTableData(mockData);
+      const mockDataIn = generateMockRealtimeDataIn();
+      realtimeDataIn = mockDataIn;
+      updateChartsFromDataIn(mockDataIn);
+      updateMonitorTableData(mockDataIn);
     }
   }
 
@@ -480,12 +468,12 @@
       try {
         // 首次调用后端获取初始数据
         console.log('开始实时计算，首次调用后端...');
-        const initialData = await callRealtimeCalculation();
-        console.log('首次后端调用成功:', initialData);
+        const initialDataIn = await callRealtimeCalculation();
+        console.log('首次后端调用成功:', initialDataIn);
         
-        if (Array.isArray(initialData)) {
-          realtimeDataOut = initialData;
-          updateMonitorTableData(initialData);
+        if (Array.isArray(initialDataIn)) {
+          realtimeDataIn = initialDataIn;
+          updateMonitorTableData(initialDataIn);
         }
         
         showResults = true;
@@ -549,7 +537,7 @@
     // 清理图表数据
     chartData.clear();
     timeCounter = 0;
-    realtimeDataOut = [];
+    realtimeDataIn = [];
     monitorTableData = [];
     
     // 重置输入参数到初始默认值
@@ -597,7 +585,7 @@
       const exportData = {
         timestamp: new Date().toISOString(),
         inputParams: inputParams,
-        realtimeData: realtimeDataOut,
+        realtimeDataIn: realtimeDataIn,
         chartData: Array.from(chartData.entries()).map(([id, data]) => ({
           chartId: id,
           chartName: curveCharts.find(c => c.id === id)?.name || `图表-${id}`,
@@ -969,6 +957,9 @@
               <!-- 图表标题 -->
               <div class="flex justify-between items-center mb-2">
                 <h3 class="text-sm text-gray-300">{chart.name}</h3>
+                <div class="text-xs text-gray-400">
+                  数据来源: dataIn格式
+                </div>
               </div>
 
               <!-- 简单SVG图表 -->
@@ -1356,7 +1347,7 @@
         <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
         </svg>
-        实时监控
+        实时监控 (dataIn格式)
       </h3>
       <button class="text-gray-400 hover:text-gray-200" onclick={closeModals}>
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1386,7 +1377,7 @@
           {#if monitorTableData.length === 0}
             <tr>
               <td colspan="2" class="px-3 py-8 text-center text-gray-400 text-xs">
-                暂无实时数据
+                暂无实时数据 (等待dataIn格式数据)
               </td>
             </tr>
           {/if}
