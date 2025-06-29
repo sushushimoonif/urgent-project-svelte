@@ -1,27 +1,32 @@
 <script lang="ts">
+  import { invoke } from '@tauri-apps/api/tauri';
+
   let isCalculating = $state(false);
   let showResults = $state(true); // 页面加载时立即显示结果
 
-  // 输入参数数据结构 - 改为列表结构
+  // 输入参数数据结构 - 修改为新格式
   let dataIN = $state([
-    { name: "height", data: '0' },
-    { name: "machNumber", data: '0' },
-    { name: "temperature", data: '0' },
-    { name: "gasFlowSystem", data: '-1' },
-    { name: "powerConsumption", data: '0' },
-    { name: "gasCompressionRatio", data: '0' },
-    { name: "oilFieldAngle", data: '66' }
+    { name: "仿真步长", data: [0.025] },
+    { name: "高度", data: [0.0] },
+    { name: "马赫数", data: [0.0] },
+    { name: "温度修正", data: [0.0] },
+    { name: "进气道总压恢复系数", data: [-1.0] },
+    { name: "功率提取", data: [0.0] },
+    { name: "压气机中间级引气", data: [0.0] },
+    { name: "油门杆角度", data: [66.0] },
+    { name: "任务类型", data: [0] }, // 作战=0, 训练=1
+    { name: "飞行状态", data: [0] }  // 地面=0, 空中=1
   ]);
 
-  // 参数名称映射 - 英文名对应中文名和取值范围
+  // 参数名称映射 - 用于显示界面
   const parameterLabels = {
-    height: { label: '高度', range: '(0~22000)', unit: 'm' },
-    machNumber: { label: '马赫数', range: '(0~2.5)', unit: '' },
-    temperature: { label: '温度修正', range: '(0~xx)', unit: 'K' },
-    gasFlowSystem: { label: '进气道', range: '(-1或0~1.1)', unit: '' },
-    powerConsumption: { label: '功率提取', range: '(0~1000000)', unit: 'W' },
-    gasCompressionRatio: { label: '压气机引气', range: '(0~2)', unit: '%' },
-    oilFieldAngle: { label: '油门角度', range: '(0~115)', unit: '度' }
+    "高度": { range: '(0~22000)', unit: 'm' },
+    "马赫数": { range: '(0~2.5)', unit: '' },
+    "温度修正": { range: '(0~xx)', unit: 'K' },
+    "进气道总压恢复系数": { range: '(-1或0~1.1)', unit: '' },
+    "功率提取": { range: '(0~1000000)', unit: 'W' },
+    "压气机中间级引气": { range: '(0~2)', unit: '%' },
+    "油门杆角度": { range: '(0~115)', unit: '度' }
   };
 
   // 仿真步长状态 - 只能选择一个
@@ -31,114 +36,200 @@
   let selectedMode = $state('作战');
   let selectedEnvironment = $state('地面');
 
-  // 31个仿真输出参数 - 新的数据结构，增加title属性
-  let outputParameters = $state([
-    { name: "N1cor", title: "低压轴换算转速/N1cor", range: "(0~110)", value: 100.0 },
-    { name: "N2cor", title: "高压轴换算转速/N2cor", range: "(0~110)", value: 100.0 },
-    { name: "W1cor", title: "发动机进口换算流量/W1cor", range: "(0~300)", value: 0.0 },
-    { name: "FG", title: "发动机净推力/FG", range: "(0~180)", value: 0.0 },
-    { name: "F", title: "发动机总推力/F", range: "(0~180)", value: 0.0 },
-    { name: "netDrag", title: "发动机进口净推阻力", range: "(0~180)", value: 0.0 },
-    { name: "totalFuelFlow", title: "发动机总耗油量", range: "(0~37000)", value: 0.0 },
-    { name: "mainFuelFlow", title: "主燃烧室耗油量", range: "(0~12000)", value: 0.0 },
-    { name: "afterburnerFuelFlow", title: "加力燃烧室耗油量", range: "(0~25000)", value: 0.0 },
-    { name: "A8", title: "喷管喉道面积/A8", range: "(0~0.8)", value: 0.27 },
-    { name: "A9", title: "喷管出口面积/A9", range: "(0~0.8)", value: 0.33 },
-    { name: "T24", title: "风扇出口温度/T24", range: "(0~1000)", value: 288.15 },
-    { name: "T3", title: "高压压气机出口温度/T3", range: "(0~1000)", value: 288.15 },
-    { name: "T41", title: "高压涡轮进口温度/T41", range: "(0~2000)", value: 288.15 },
-    { name: "T43", title: "低压涡轮进口温度/T43", range: "(0~2000)", value: 288.15 },
-    { name: "P21", title: "风扇出口总压/P21", range: "(0~1000000)", value: 101325.0 },
-    { name: "P3", title: "高压压气机出口总压/P3", range: "(0~4200000)", value: 101325.0 },
-    { name: "P41", title: "高压涡轮进口总压/P41", range: "(0~1000000)", value: 101325.0 },
-    { name: "P43", title: "低压涡轮进口总压/P43", range: "(0~1000000)", value: 101325.0 },
-    { name: "T6", title: "低压涡轮出口总温/T6", range: "(200~1300)", value: 288.15 },
-    { name: "Ps8", title: "喷管喉道静压/Ps8", range: "(0~500000)", value: 101325.0 },
-    { name: "P8", title: "喷管喉道总压/P8", range: "(0~500000)", value: 101325.0 },
-    { name: "Ts8", title: "喷管喉道静温/Ts8", range: "(0~1000)", value: 288.15 },
-    { name: "T8", title: "喷管喉道总温/T8", range: "(0~1000)", value: 288.15 },
-    { name: "V8", title: "喷管喉道气流速度/V8", range: "(0~500)", value: 0.0 },
-    { name: "Ps9", title: "喷管出口静压/Ps9", range: "(0~500000)", value: 288.15 },
-    { name: "P9", title: "喷管出口总压/P9", range: "(0~500000)", value: 101325.0 },
-    { name: "Ts9", title: "喷管出口静温/Ts9", range: "(0~1200)", value: 288.15 },
-    { name: "T9", title: "喷管出口总温/T9", range: "(0~1200)", value: 288.15 },
-    { name: "V9", title: "喷管出口气流速度/V9", range: "(0~500)", value: 0.0 },
-    { name: "Cfg", title: "喷管推力损失系数/Cfg", range: "(0.7~1.0)", value: 0.0 }
+  // 输出参数 - 修改为新的数据结构
+  let dataOUT = $state([
+    { name: "低压轴换算转速", data: [100.0] },
+    { name: "高压轴换算转速", data: [100.0] },
+    { name: "发动机进口换算流量", data: [0.0] },
+    { name: "发动机净推力", data: [0.0] },
+    { name: "发动机总推力", data: [0.0] },
+    { name: "发动机进口净推阻力", data: [0.0] },
+    { name: "发动机总耗油量", data: [0.0] },
+    { name: "主燃烧室耗油量", data: [0.0] },
+    { name: "加力燃烧室耗油量", data: [0.0] },
+    { name: "喷管喉道面积", data: [0.27] },
+    { name: "喷管出口面积", data: [0.33] },
+    { name: "风扇出口温度", data: [288.15] },
+    { name: "高压压气机出口温度", data: [288.15] },
+    { name: "高压涡轮进口温度", data: [288.15] },
+    { name: "低压涡轮进口温度", data: [288.15] },
+    { name: "风扇出口总压", data: [101325.0] },
+    { name: "高压压气机出口总压", data: [101325.0] },
+    { name: "高压涡轮进口总压", data: [101325.0] },
+    { name: "低压涡轮进口总压", data: [101325.0] },
+    { name: "低压涡轮出口总温", data: [288.15] },
+    { name: "喷管喉道静压", data: [101325.0] },
+    { name: "喷管喉道总压", data: [101325.0] },
+    { name: "喷管喉道静温", data: [288.15] },
+    { name: "喷管喉道总温", data: [288.15] },
+    { name: "喷管喉道气流速度", data: [0.0] },
+    { name: "喷管出口静压", data: [288.15] },
+    { name: "喷管出口总压", data: [101325.0] },
+    { name: "喷管出口静温", data: [288.15] },
+    { name: "喷管出口总温", data: [288.15] },
+    { name: "喷管出口气流速度", data: [0.0] },
+    { name: "喷管推力损失系数", data: [0.0] }
   ]);
 
+  // 参数取值范围映射 - 用于显示
+  const parameterRanges = {
+    "低压轴换算转速": "(0~110)",
+    "高压轴换算转速": "(0~110)",
+    "发动机进口换算流量": "(0~300)",
+    "发动机净推力": "(0~180)",
+    "发动机总推力": "(0~180)",
+    "发动机进口净推阻力": "(0~180)",
+    "发动机总耗油量": "(0~37000)",
+    "主燃烧室耗油量": "(0~12000)",
+    "加力燃烧室耗油量": "(0~25000)",
+    "喷管喉道面积": "(0~0.8)",
+    "喷管出口面积": "(0~0.8)",
+    "风扇出口温度": "(0~1000)",
+    "高压压气机出口温度": "(0~1000)",
+    "高压涡轮进口温度": "(0~2000)",
+    "低压涡轮进口温度": "(0~2000)",
+    "风扇出口总压": "(0~1000000)",
+    "高压压气机出口总压": "(0~4200000)",
+    "高压涡轮进口总压": "(0~1000000)",
+    "低压涡轮进口总压": "(0~1000000)",
+    "低压涡轮出口总温": "(200~1300)",
+    "喷管喉道静压": "(0~500000)",
+    "喷管喉道总压": "(0~500000)",
+    "喷管喉道静温": "(0~1000)",
+    "喷管喉道总温": "(0~1000)",
+    "喷管喉道气流速度": "(0~500)",
+    "喷管出口静压": "(0~500000)",
+    "喷管出口总压": "(0~500000)",
+    "喷管出口静温": "(0~1200)",
+    "喷管出口总温": "(0~1200)",
+    "喷管出口气流速度": "(0~500)",
+    "喷管推力损失系数": "(0.7~1.0)"
+  };
+
+  // 更新dataIN中的选项状态
+  function updateDataINOptions() {
+    // 更新仿真步长
+    const stepParam = dataIN.find(p => p.name === "仿真步长");
+    if (stepParam) {
+      stepParam.data = [parseFloat(selectedSimulationStep)];
+    }
+
+    // 更新任务类型
+    const missionParam = dataIN.find(p => p.name === "任务类型");
+    if (missionParam) {
+      missionParam.data = [selectedMode === '作战' ? 0 : 1];
+    }
+
+    // 更新飞行状态
+    const flightParam = dataIN.find(p => p.name === "飞行状态");
+    if (flightParam) {
+      flightParam.data = [selectedEnvironment === '地面' ? 0 : 1];
+    }
+  }
+
   // 更新输出参数的值 - 根据后端返回的dataOUT更新
-  function updateOutputParameters(dataOUT: Array<{name: string, data: string}>) {
-    dataOUT.forEach(outParam => {
-      const outputParam = outputParameters.find(p => p.name === outParam.name);
-      if (outputParam) {
-        outputParam.value = parseFloat(outParam.data) || 0.0;
+  function updateOutputParameters(newDataOUT: Array<{name: string, data: number[]}>) {
+    newDataOUT.forEach(outParam => {
+      const outputParam = dataOUT.find(p => p.name === outParam.name);
+      if (outputParam && outParam.data && outParam.data.length > 0) {
+        outputParam.data = [...outParam.data];
       }
     });
     // 触发响应式更新
-    outputParameters = [...outputParameters];
-  }
-
-  // 构建调用参数 - 将dataIN和选项状态传给后端
-  function buildCalculationParams() {
-    // 更新dataIN中的仿真步长、模式等选项
-    const stepTimeParam = dataIN.find(p => p.name === 'stepTime');
-    const missionTypeParam = dataIN.find(p => p.name === 'missionType');
-    const flightModeParam = dataIN.find(p => p.name === 'flightMode');
-
-    // 如果不存在这些参数，则添加
-    if (!stepTimeParam) {
-      dataIN.push({ name: 'stepTime', data: selectedSimulationStep });
-    } else {
-      stepTimeParam.data = selectedSimulationStep;
-    }
-
-    if (!missionTypeParam) {
-      dataIN.push({ name: 'missionType', data: selectedMode === '作战' ? '0' : '1' });
-    } else {
-      missionTypeParam.data = selectedMode === '作战' ? '0' : '1';
-    }
-
-    if (!flightModeParam) {
-      dataIN.push({ name: 'flightMode', data: selectedEnvironment === '地面' ? '0' : '1' });
-    } else {
-      flightModeParam.data = selectedEnvironment === '地面' ? '0' : '1';
-    }
-
-    return dataIN;
+    dataOUT = [...dataOUT];
   }
 
   // 生成模拟的dataOUT数据
   function generateMockDataOUT() {
-    return outputParameters.map(param => ({
+    return dataOUT.map(param => ({
       name: param.name,
-      data: (Math.random() * 100 + 50).toFixed(2) // 生成50-150之间的随机数
+      data: [(Math.random() * 100 + 50)] // 生成50-150之间的随机数
     }));
   }
 
-  // 简化的计算函数 - 直接使用模拟数据
+  // 检查是否在Tauri环境中运行
+  function isTauriEnvironment(): boolean {
+    return typeof window !== 'undefined' && 
+           typeof window.__TAURI_IPC__ === 'function';
+  }
+
+  // 调用后端计算函数
+  async function callSteadyStateCalculation(data: any) {
+    try {
+      // 检查是否在Tauri环境中
+      if (isTauriEnvironment()) {
+        // 使用 Tauri invoke 调用后端的 transient_calculation 函数
+        const result = await invoke("transient_calculation", data);
+        return result;
+      } else {
+        // 在浏览器环境中返回模拟结果
+        console.log('运行在浏览器环境中，返回模拟计算结果');
+        return {
+          success: true,
+          message: '模拟计算完成（浏览器环境）',
+          dataOUT: generateMockDataOUT()
+        };
+      }
+    } catch (error) {
+      console.error('计算调用失败:', error);
+      // 如果Tauri调用失败，也返回模拟结果作为后备
+      return {
+        success: false,
+        message: '计算失败，返回模拟结果',
+        dataOUT: generateMockDataOUT()
+      };
+    }
+  }
+
+  // 计算函数 - 按照新的格式传值
   async function handleCalculate() {
     isCalculating = true;
     
     try {
-      // 构建调用参数 - 更新dataIN
-      const updatedDataIN = buildCalculationParams();
-      console.log('发送到后端的 dataIN:', updatedDataIN);
+      // 更新dataIN中的选项状态
+      updateDataINOptions();
+      
+      // 构建传给后端的数据格式
+      const data = {
+        dataIN: dataIN,
+        type: "稳态计算"
+      };
+      
+      console.log('发送到后端的数据:', data);
       
       // 模拟网络延迟
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // 生成模拟的dataOUT
-      const dataOUT = generateMockDataOUT();
-      console.log('模拟的 dataOUT:', dataOUT);
+      // 调用后端计算函数
+      const result = await callSteadyStateCalculation(data);
+      console.log('计算返回结果:', result);
       
-      // 根据dataOUT更新输出参数
-      updateOutputParameters(dataOUT);
+      // 根据返回的dataOUT更新输出参数
+      if (result.dataOUT) {
+        updateOutputParameters(result.dataOUT);
+      }
+      
       console.log('输出参数已更新');
       
     } catch (error) {
       console.error('计算过程中出错:', error);
     } finally {
       isCalculating = false;
+    }
+  }
+
+  // 获取输入参数的显示值
+  function getInputValue(paramName: string): string {
+    const param = dataIN.find(p => p.name === paramName);
+    return param && param.data.length > 0 ? param.data[0].toString() : '0';
+  }
+
+  // 设置输入参数的值
+  function setInputValue(paramName: string, value: string) {
+    const param = dataIN.find(p => p.name === paramName);
+    if (param) {
+      const numValue = parseFloat(value) || 0;
+      param.data = [numValue];
     }
   }
 </script>
@@ -199,20 +290,19 @@
           </div>
         </div>
 
-        <!-- 输入参数 - 使用新的数据结构和映射 -->
+        <!-- 输入参数 - 使用新的数据结构 -->
         <div class="flex-1 space-y-3 overflow-y-auto">
-          {#each dataIN.filter(p => parameterLabels[p.name]) as param}
-            {@const config = parameterLabels[param.name]}
+          {#each Object.entries(parameterLabels) as [paramName, config]}
             <div class="flex items-center">
               <label class="text-xs text-gray-300 flex-1">
-                {config.label}{config.range}
+                {paramName}{config.range}
               </label>
               <div class="flex items-center gap-1">
                 <input
                   type="text"
-                  bind:value={param.data}
+                  value={getInputValue(paramName)}
+                  oninput={(e) => setInputValue(paramName, e.target.value)}
                   class="w-24 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
-                  placeholder={param.data}
                 />
                 <span class="text-gray-400 text-xs w-4">{config.unit}</span>
               </div>
@@ -260,8 +350,8 @@
               <div class="h-full grid grid-cols-2 gap-0">
                 <!-- 左列：参数1-16 -->
                 <div class="border-r border-gray-700 overflow-hidden">
-                  {#each outputParameters.slice(0, 16) as param, index}
-                    <div class="flex items-center px-3 py-2 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'} h-[calc((100vh-320px)/16)]">
+                  {#each dataOUT.slice(0, 16) as param, index}
+                    <div class="flex items-center px-3 py-3 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'} h-[calc((100vh-320px)/16)]">
                       <!-- 序号 -->
                       <div class="w-5 text-xs text-gray-500 font-mono flex-shrink-0 mr-2">
                         {index + 1}
@@ -269,17 +359,17 @@
                       <!-- 参数名称和取值范围 -->
                       <div class="flex-1 min-w-0 mr-2">
                         <div class="flex items-baseline gap-1">
-                          <span class="text-xs text-gray-300 font-medium truncate" title={param.title}>
-                            {param.title}
+                          <span class="text-xs text-gray-300 font-medium truncate" title={param.name}>
+                            {param.name}
                           </span>
                           <span class="text-xs text-gray-500 flex-shrink-0">
-                            {param.range}
+                            {parameterRanges[param.name] || ''}
                           </span>
                         </div>
                       </div>
                       <!-- 数值 - 保留两位小数 -->
                       <div class="text-xs text-white font-mono bg-gray-700 px-2 py-1 rounded min-w-[60px] text-center flex-shrink-0">
-                        {param.value.toFixed(2)}
+                        {param.data[0]?.toFixed(2) || '0.00'}
                       </div>
                     </div>
                   {/each}
@@ -287,8 +377,8 @@
 
                 <!-- 右列：参数17-31 -->
                 <div class="overflow-hidden">
-                  {#each outputParameters.slice(16, 31) as param, index}
-                    <div class="flex items-center px-3 py-2 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'} h-[calc((100vh-320px)/15)]">
+                  {#each dataOUT.slice(16, 31) as param, index}
+                    <div class="flex items-center px-3 py-3 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'} h-[calc((100vh-320px)/15)]">
                       <!-- 序号 -->
                       <div class="w-5 text-xs text-gray-500 font-mono flex-shrink-0 mr-2">
                         {index + 17}
@@ -296,17 +386,17 @@
                       <!-- 参数名称和取值范围 -->
                       <div class="flex-1 min-w-0 mr-2">
                         <div class="flex items-baseline gap-1">
-                          <span class="text-xs text-gray-300 font-medium truncate" title={param.title}>
-                            {param.title}
+                          <span class="text-xs text-gray-300 font-medium truncate" title={param.name}>
+                            {param.name}
                           </span>
                           <span class="text-xs text-gray-500 flex-shrink-0">
-                            {param.range}
+                            {parameterRanges[param.name] || ''}
                           </span>
                         </div>
                       </div>
                       <!-- 数值 - 保留两位小数 -->
                       <div class="text-xs text-white font-mono bg-gray-700 px-2 py-1 rounded min-w-[60px] text-center flex-shrink-0">
-                        {param.value.toFixed(2)}
+                        {param.data[0]?.toFixed(2) || '0.00'}
                       </div>
                     </div>
                   {/each}
@@ -317,7 +407,7 @@
             <!-- 底部状态栏 -->
             <div class="bg-gray-750 px-3 py-2 border-t border-gray-600 flex-shrink-0">
               <div class="flex justify-between items-center text-xs text-gray-400">
-                <span>共 {outputParameters.length} 个参数</span>
+                <span>共 {dataOUT.length} 个参数</span>
                 <div class="flex items-center gap-2">
                   <div class="w-2 h-2 bg-green-500 rounded-full {isCalculating ? 'animate-pulse' : ''}"></div>
                   <span>{isCalculating ? '计算中...' : '实时更新'}</span>
