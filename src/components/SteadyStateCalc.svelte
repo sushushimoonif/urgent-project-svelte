@@ -4,7 +4,7 @@
   let isCalculating = $state(false);
   let showResults = $state(true); // 页面加载时立即显示结果
 
-  // 输入参数数据结构 - 修改为新格式
+  // 输入参数数据结构 - 修改为新格式，包含作战/训练、地面/空中
   let dataIN = $state([
     { name: "仿真步长", data: [0.025] },
     { name: "高度", data: [0.0] },
@@ -14,8 +14,10 @@
     { name: "功率提取", data: [0.0] },
     { name: "压气机中间级引气", data: [0.0] },
     { name: "油门杆角度", data: [66.0] },
-    { name: "任务类型", data: [0] }, // 作战=0, 训练=1
-    { name: "飞行状态", data: [0] }  // 地面=0, 空中=1
+    { name: "作战", data: [0] },
+    { name: "训练", data: [1] },
+    { name: "地面", data: [0] },
+    { name: "空中", data: [1] }
   ]);
 
   // 参数名称映射 - 用于显示界面
@@ -36,8 +38,9 @@
   let selectedMode = $state('作战');
   let selectedEnvironment = $state('地面');
 
-  // 输出参数 - 修改为新的数据结构
+  // 输出参数 - 修改为新的数据结构，添加仿真步长行
   let dataOUT = $state([
+    { name: "仿真步长", data: [0.025] }, // 新增仿真步长行
     { name: "低压轴换算转速", data: [100.0] },
     { name: "高压轴换算转速", data: [100.0] },
     { name: "发动机进口换算流量", data: [0.0] },
@@ -71,8 +74,9 @@
     { name: "喷管推力损失系数", data: [0.0] }
   ]);
 
-  // 参数取值范围映射 - 用于显示
+  // 参数取值范围映射 - 用于显示，添加仿真步长
   const parameterRanges = {
+    "仿真步长": "(0.0125~0.025)",
     "低压轴换算转速": "(0~110)",
     "高压轴换算转速": "(0~110)",
     "发动机进口换算流量": "(0~300)",
@@ -114,16 +118,36 @@
       stepParam.data = [parseFloat(selectedSimulationStep)];
     }
 
-    // 更新任务类型
-    const missionParam = dataIN.find(p => p.name === "任务类型");
-    if (missionParam) {
-      missionParam.data = [selectedMode === '作战' ? 0 : 1];
+    // 更新作战/训练状态
+    const combatParam = dataIN.find(p => p.name === "作战");
+    const trainingParam = dataIN.find(p => p.name === "训练");
+    if (combatParam && trainingParam) {
+      if (selectedMode === '作战') {
+        combatParam.data = [0];
+        trainingParam.data = [1];
+      } else {
+        combatParam.data = [1];
+        trainingParam.data = [0];
+      }
     }
 
-    // 更新飞行状态
-    const flightParam = dataIN.find(p => p.name === "飞行状态");
-    if (flightParam) {
-      flightParam.data = [selectedEnvironment === '地面' ? 0 : 1];
+    // 更新地面/空中状态
+    const groundParam = dataIN.find(p => p.name === "地面");
+    const airParam = dataIN.find(p => p.name === "空中");
+    if (groundParam && airParam) {
+      if (selectedEnvironment === '地面') {
+        groundParam.data = [0];
+        airParam.data = [1];
+      } else {
+        groundParam.data = [1];
+        airParam.data = [0];
+      }
+    }
+
+    // 更新输出参数中的仿真步长
+    const outputStepParam = dataOUT.find(p => p.name === "仿真步长");
+    if (outputStepParam) {
+      outputStepParam.data = [parseFloat(selectedSimulationStep)];
     }
   }
 
@@ -143,7 +167,7 @@
   function generateMockDataOUT() {
     return dataOUT.map(param => ({
       name: param.name,
-      data: [(Math.random() * 100 + 50)] // 生成50-150之间的随机数
+      data: param.name === "仿真步长" ? [parseFloat(selectedSimulationStep)] : [(Math.random() * 100 + 50)] // 仿真步长保持选择的值，其他生成随机数
     }));
   }
 
@@ -153,7 +177,7 @@
            typeof window.__TAURI_IPC__ === 'function';
   }
 
-  // 调用后端计算函数
+  // 调用后端计算函数 - 使用invoke函数
   async function callSteadyStateCalculation(data: any) {
     try {
       // 检查是否在Tauri环境中
@@ -181,7 +205,7 @@
     }
   }
 
-  // 计算函数 - 按照新的格式传值
+  // 计算函数 - 按照指定格式传值给后端
   async function handleCalculate() {
     isCalculating = true;
     
@@ -207,6 +231,9 @@
       // 根据返回的dataOUT更新输出参数
       if (result.dataOUT) {
         updateOutputParameters(result.dataOUT);
+      } else {
+        // 如果没有返回dataOUT，使用模拟数据
+        updateOutputParameters(generateMockDataOUT());
       }
       
       console.log('输出参数已更新');
@@ -369,16 +396,16 @@
                       </div>
                       <!-- 数值 - 保留两位小数 -->
                       <div class="text-xs text-white font-mono bg-gray-700 px-2 py-1 rounded min-w-[60px] text-center flex-shrink-0">
-                        {param.data[0]?.toFixed(2) || '0.00'}
+                        {param.data[0]?.toFixed(param.name === "仿真步长" ? 4 : 2) || '0.00'}
                       </div>
                     </div>
                   {/each}
                 </div>
 
-                <!-- 右列：参数17-31 -->
+                <!-- 右列：参数17-32 -->
                 <div class="overflow-hidden">
-                  {#each dataOUT.slice(16, 31) as param, index}
-                    <div class="flex items-center px-3 py-3 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'} h-[calc((100vh-320px)/15)]">
+                  {#each dataOUT.slice(16, 32) as param, index}
+                    <div class="flex items-center px-3 py-3 border-b border-gray-700 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'} h-[calc((100vh-320px)/16)]">
                       <!-- 序号 -->
                       <div class="w-5 text-xs text-gray-500 font-mono flex-shrink-0 mr-2">
                         {index + 17}
