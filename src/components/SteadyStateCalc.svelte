@@ -7,13 +7,13 @@
   // 输入参数数据结构 - 修改为新格式，包含作战/训练、地面/空中
   let dataIN = $state([
     { name: "仿真步长", data: [0.025] },
-    { name: "高度", data: [0.0] },
-    { name: "马赫数", data: [0.0] },
-    { name: "温度修正", data: [0.0] },
-    { name: "进气道总压恢复系数", data: [-1.0] },
-    { name: "功率提取", data: [0.0] },
-    { name: "压气机中间级引气", data: [0.0] },
-    { name: "油门杆角度", data: [66.0] },
+    { name: "高度", data: [21980.33] },
+    { name: "马赫数", data: [21980.33] },
+    { name: "温度修正", data: [102534.11] },
+    { name: "进气道总压恢复系数", data: [102534.11] },
+    { name: "功率提取", data: [123444.33] },
+    { name: "压气机中间级引气", data: [122444.33] },
+    { name: "油门杆角度", data: [122444.33] },
     { name: "作战", data: [0] },
     { name: "训练", data: [1] },
     { name: "地面", data: [0] },
@@ -24,11 +24,11 @@
   const parameterLabels = {
     "高度": { range: '(0~22000)', unit: 'm' },
     "马赫数": { range: '(0~2.5)', unit: '' },
-    "温度修正": { range: '(0~xx)', unit: 'K' },
-    "进气道总压恢复系数": { range: '(-1或0~1.1)', unit: '' },
+    "温度修正": { range: '(≥0)', unit: 'K' },
+    "进气道总压恢复系数": { range: '(0~1.1)', unit: 'm' },
     "功率提取": { range: '(0~1000000)', unit: 'W' },
-    "压气机中间级引气": { range: '(0~2)', unit: '%' },
-    "油门杆角度": { range: '(0~115)', unit: '度' }
+    "压气机中间级引气": { range: '(0~100000)', unit: 'kg.s' },
+    "油门杆角度": { range: '(0~1000000)', unit: 'deg' }
   };
 
   // 仿真步长状态 - 只能选择一个
@@ -135,10 +135,10 @@
     }));
   }
 
-  // 调用后端计算函数 - 直接使用invoke函数，去掉环境判断
+  // 调用后端计算函数
   async function callSteadyStateCalculation(data: any) {
     try {
-      // 直接使用 Tauri invoke 调用后端的 transient_calculation 函数
+      // 使用 Tauri invoke 调用后端的 transient_calculation 函数
       const result = await invoke("transient_calculation", data);
       return result;
     } catch (error) {
@@ -208,149 +208,153 @@
   }
 </script>
 
-<div class="h-[calc(100vh-120px)] bg-gray-900 p-4 sm:p-6 lg:p-8">
-  <div class="w-full max-w-[95%] mx-auto h-full">
-    <div class="flex h-full gap-4">
-      <!-- 左侧输入面板 -->
-      <div class="w-80 bg-gray-800 border border-gray-700 rounded-lg p-4 flex flex-col">
-        <!-- 仿真步长、作战/训练、地面/空中按钮 -->
-        <div class="mb-4 space-y-2">
-          <!-- 仿真步长按钮 -->
-          <div class="flex">
-            <button 
-              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedSimulationStep === '0.025' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-              onclick={() => selectedSimulationStep = '0.025'}
-            >
-              仿真步长<br>0.025秒
-            </button>
-            <button 
-              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedSimulationStep === '0.0125' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-              onclick={() => selectedSimulationStep = '0.0125'}
-            >
-              仿真步长<br>0.0125秒
-            </button>
-          </div>
-          
-          <!-- 作战/训练模式选择按钮 -->
-          <div class="flex">
-            <button 
-              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedMode === '作战' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-              onclick={() => selectedMode = '作战'}
-            >
-              作战
-            </button>
-            <button 
-              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedMode === '训练' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-              onclick={() => selectedMode = '训练'}
-            >
-              训练
-            </button>
-          </div>
-          
-          <!-- 地面/空中环境选择按钮 -->
-          <div class="flex">
-            <button 
-              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedEnvironment === '地面' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-              onclick={() => selectedEnvironment = '地面'}
-            >
-              地面
-            </button>
-            <button 
-              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedEnvironment === '空中' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-              onclick={() => selectedEnvironment = '空中'}
-            >
-              空中
-            </button>
-          </div>
-        </div>
-
-        <!-- 输入参数 - 使用新的数据结构 -->
-        <div class="flex-1 space-y-3 overflow-y-auto">
-          {#each Object.entries(parameterLabels) as [paramName, config]}
-            <div class="flex items-center">
-              <label class="text-xs text-gray-300 flex-1">
-                {paramName}{config.range}
-              </label>
-              <div class="flex items-center gap-1">
-                <input
-                  type="text"
-                  value={getInputValue(paramName)}
-                  oninput={(e) => setInputValue(paramName, e.target.value)}
-                  class="w-24 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
-                />
-                <span class="text-gray-400 text-xs w-4">{config.unit}</span>
-              </div>
-            </div>
-          {/each}
-        </div>
-
-        <!-- 计算按钮 -->
-        <div class="mt-4">
-          <button
-            class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            onclick={handleCalculate}
-            disabled={isCalculating}
+<div class="min-h-screen bg-gray-900 text-white">
+  <div class="flex h-screen">
+    <!-- 左侧输入面板 -->
+    <div class="w-96 bg-gray-800 border-r border-gray-700 flex flex-col">
+      <!-- 仿真步长选择 -->
+      <div class="p-6 border-b border-gray-700">
+        <div class="flex gap-2">
+          <button 
+            class="flex-1 px-4 py-2 text-sm font-medium rounded transition-colors {selectedSimulationStep === '0.025' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+            onclick={() => selectedSimulationStep = '0.025'}
           >
-            <span class="text-sm">▶</span>
-            {isCalculating ? '计算中...' : '计算'}
+            仿真步长<br>0.025秒
+          </button>
+          <button 
+            class="flex-1 px-4 py-2 text-sm font-medium rounded transition-colors {selectedSimulationStep === '0.125' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+            onclick={() => selectedSimulationStep = '0.125'}
+          >
+            仿真步长<br>0.125秒
           </button>
         </div>
       </div>
 
-      <!-- 右侧参数列表 - 按照图片样式修改 -->
-      <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
-        {#if showResults}
-          <div class="h-full flex flex-col">
-            <!-- 参数列表内容 - 32条数据，按照图片样式布局 -->
-            <div class="flex-1 overflow-hidden">
-              <div class="h-full grid grid-cols-2 gap-0">
-                <!-- 左列：参数1-16 -->
-                <div class="border-r border-gray-600 overflow-hidden">
-                  {#each dataOut.slice(0, 16) as param, index}
-                    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-600 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-700' : 'bg-gray-600'} h-[calc((100vh-200px)/16)]">
-                      <!-- 参数名称 -->
-                      <div class="flex-1 text-sm text-gray-200 font-medium">
-                        {param.name}
-                      </div>
-                      <!-- 数值 -->
-                      <div class="text-sm text-white font-mono text-right">
-                        {param.data[0]?.toFixed(2) || '0.00'}
-                      </div>
-                    </div>
-                  {/each}
-                </div>
+      <!-- 作战/训练模式选择 -->
+      <div class="px-6 py-4 border-b border-gray-700">
+        <div class="flex gap-2">
+          <button 
+            class="flex-1 px-4 py-2 text-sm font-medium rounded transition-colors {selectedMode === '作战' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+            onclick={() => selectedMode = '作战'}
+          >
+            作战
+          </button>
+          <button 
+            class="flex-1 px-4 py-2 text-sm font-medium rounded transition-colors {selectedMode === '训练' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+            onclick={() => selectedMode = '训练'}
+          >
+            训练
+          </button>
+        </div>
+      </div>
 
-                <!-- 右列：参数17-32 -->
-                <div class="overflow-hidden">
-                  {#each dataOut.slice(16, 32) as param, index}
-                    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-600 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-700' : 'bg-gray-600'} h-[calc((100vh-200px)/16)]">
-                      <!-- 参数名称 -->
-                      <div class="flex-1 text-sm text-gray-200 font-medium">
-                        {param.name}
-                      </div>
-                      <!-- 数值 -->
-                      <div class="text-sm text-white font-mono text-right">
-                        {param.data[0]?.toFixed(2) || '0.00'}
-                      </div>
-                    </div>
-                  {/each}
-                </div>
+      <!-- 地面/空中环境选择 -->
+      <div class="px-6 py-4 border-b border-gray-700">
+        <div class="flex gap-2">
+          <button 
+            class="flex-1 px-4 py-2 text-sm font-medium rounded transition-colors {selectedEnvironment === '地面' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+            onclick={() => selectedEnvironment = '地面'}
+          >
+            地面
+          </button>
+          <button 
+            class="flex-1 px-4 py-2 text-sm font-medium rounded transition-colors {selectedEnvironment === '空中' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+            onclick={() => selectedEnvironment = '空中'}
+          >
+            空中
+          </button>
+        </div>
+      </div>
+
+      <!-- 输入参数 -->
+      <div class="flex-1 px-6 py-4 space-y-4 overflow-y-auto">
+        {#each Object.entries(parameterLabels) as [paramName, config]}
+          <div class="space-y-2">
+            <div class="flex justify-between items-center">
+              <label class="text-sm text-gray-300 font-medium">
+                {paramName}
+              </label>
+              <div class="text-xs text-gray-500">
+                {config.range}
               </div>
             </div>
-
-            <!-- 底部状态栏 -->
-            <div class="bg-gray-750 px-3 py-2 border-t border-gray-600 flex-shrink-0">
-              <div class="flex justify-between items-center text-xs text-gray-400">
-                <span>共 {dataOut.length} 个参数</span>
-                <div class="flex items-center gap-2">
-                  <div class="w-2 h-2 bg-green-500 rounded-full {isCalculating ? 'animate-pulse' : ''}"></div>
-                  <span>{isCalculating ? '计算中...' : '实时更新'}</span>
-                </div>
-              </div>
+            <div class="flex items-center gap-2">
+              <input
+                type="text"
+                value={getInputValue(paramName)}
+                oninput={(e) => setInputValue(paramName, e.target.value)}
+                class="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-right text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              />
+              <span class="text-gray-400 text-sm w-8 text-left">{config.unit}</span>
             </div>
           </div>
-        {/if}
+        {/each}
       </div>
+
+      <!-- 计算按钮 -->
+      <div class="p-6 border-t border-gray-700">
+        <button
+          class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          onclick={handleCalculate}
+          disabled={isCalculating}
+        >
+          <span class="text-lg">▶</span>
+          {isCalculating ? '计算' : '计算'}
+        </button>
+      </div>
+    </div>
+
+    <!-- 右侧结果显示区域 -->
+    <div class="flex-1 bg-gray-900">
+      {#if showResults}
+        <div class="h-full flex">
+          <!-- 左侧表格 -->
+          <div class="flex-1 bg-gray-800 border-r border-gray-700">
+            <!-- 表格标题 -->
+            <div class="bg-gray-700 px-4 py-3 border-b border-gray-600 flex items-center justify-between">
+              <span class="text-sm font-medium text-gray-200">参数列表</span>
+              <span class="text-xs text-gray-400 bg-gray-600 px-2 py-1 rounded">1</span>
+            </div>
+            
+            <!-- 表格内容 -->
+            <div class="h-full overflow-y-auto">
+              {#each dataOut.slice(0, 16) as param, index}
+                <div class="flex items-center justify-between px-4 py-3 border-b border-gray-600 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-750'}">
+                  <div class="text-sm text-gray-200 font-medium flex-1">
+                    {param.name}
+                  </div>
+                  <div class="text-sm text-white font-mono text-right">
+                    {param.data[0]?.toFixed(2) || '0.00'}
+                  </div>
+                </div>
+              {/each}
+            </div>
+          </div>
+
+          <!-- 右侧表格 -->
+          <div class="flex-1 bg-gray-800">
+            <!-- 表格标题 -->
+            <div class="bg-gray-700 px-4 py-3 border-b border-gray-600 flex items-center justify-between">
+              <span class="text-sm font-medium text-gray-200">参数列表</span>
+              <span class="text-xs text-gray-400 bg-gray-600 px-2 py-1 rounded">1</span>
+            </div>
+            
+            <!-- 表格内容 -->
+            <div class="h-full overflow-y-auto">
+              {#each dataOut.slice(16, 32) as param, index}
+                <div class="flex items-center justify-between px-4 py-3 border-b border-gray-600 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-750'}">
+                  <div class="text-sm text-gray-200 font-medium flex-1">
+                    {param.name}
+                  </div>
+                  <div class="text-sm text-white font-mono text-right">
+                    {param.data[0]?.toFixed(2) || '0.00'}
+                  </div>
+                </div>
+              {/each}
+            </div>
+          </div>
+        </div>
+      {/if}
     </div>
   </div>
 </div>
