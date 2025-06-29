@@ -30,7 +30,7 @@
     { name: "油门杆角度", data: [66.66] }
   ]);
 
-  // 输出数据结构 - dataOut格式（完整样例）
+  // 输出数据结构 - dataOut格式
   let dataOut = $state<Array<{name: string, data: number[][]}>>([]);
 
   // 仿真步长状态 - 只能选择一个
@@ -49,7 +49,7 @@
   let curveCharts = $state([
     {
       id: 1,
-      name: '发动机性能参数',
+      name: '曲线图-1',
       curves: [
         { name: '高压涡轮出口总压' },
         { name: '高压压气机出口总压' },
@@ -58,20 +58,20 @@
     },
     {
       id: 2,
-      name: '温度监控参数', 
+      name: '曲线图-2', 
       curves: [
-        { name: '高压压气机出口温度' },
-        { name: '高压涡轮进口温度' },
-        { name: '低压涡轮出口温度' }
+        { name: '高压涡轮出口总压' },
+        { name: '高压压气机出口总压' },
+        { name: '低压涡轮出口总压' }
       ]
     },
     {
       id: 3,
-      name: '推力与效率参数',
+      name: '曲线图-3',
       curves: [
-        { name: '发动机净推力' },
-        { name: '发动机总推力' },
-        { name: '推进效率' }
+        { name: '高压涡轮出口总压' },
+        { name: '高压压气机出口总压' },
+        { name: '低压涡轮出口总压' }
       ]
     }
   ]);
@@ -98,26 +98,25 @@
 
   // 参数列表数据 - 右侧
   const rightParameterList = $state([
-    { name: '发动机净推力', selected: false },
-    { name: '发动机总推力', selected: false },
-    { name: '推进效率', selected: false },
-    { name: '热效率', selected: false },
-    { name: '总效率', selected: false },
-    { name: '燃油消耗率', selected: false },
-    { name: '比冲', selected: false },
-    { name: '推重比', selected: false },
-    { name: '单位推力', selected: false },
-    { name: '喷管出口速度', selected: false },
-    { name: '喷管出口马赫数', selected: false },
-    { name: '喷管出口总压', selected: false },
-    { name: '喷管喉道面积', selected: false },
-    { name: '喷管出口面积', selected: false }
+    { name: '发动机净马力', selected: false },
+    { name: '发动机总马力', selected: false },
+    { name: '循环装置面积', selected: false },
+    { name: '循环装置总压', selected: false },
+    { name: '循环出口总压', selected: false },
+    { name: '循环装置温度', selected: false },
+    { name: '循环出口温度', selected: false },
+    { name: '循环装置流量温度', selected: false },
+    { name: '循环出口流量', selected: false },
+    { name: '循环装置总压', selected: false },
+    { name: '循环出口总压', selected: false },
+    { name: '循环装置流量温度', selected: false },
+    { name: '循环出口流量', selected: false },
+    { name: '循环压力损失系数', selected: false }
   ]);
 
   // uPlot图表数据存储 - 每个图表对应一个data_chart_{id}
   let chartDataMap = $state<Map<number, Array<{name: string, data: number[]}>>>(new Map());
   let simulationTimer: number | null = null;
-  let currentTimeStep = $state(0); // 当前时间步
 
   // 实时监控表格数据
   let monitorTableData = $state<Array<{parameter: string, value: string}>>([]);
@@ -207,109 +206,82 @@
     }
   }
 
-  // 生成完整的模拟实时数据样例 - dataOut格式
+  // 生成模拟实时数据 - dataOut格式，包含完整的时间序列数据
   function generateMockRealtimeData() {
-    const stepSize = parseFloat(selectedSimulationStep);
-    const currentTime = currentTimeStep * stepSize;
+    const timePoints = 100; // 生成100个时间点的数据
+    const stepSize = parseFloat(selectedSimulationStep); // 使用当前仿真步长
     
-    // 基于油门杆角度和其他输入参数的影响因子
-    const throttleFactor = throttleValue / 120; // 0-1之间
-    const altitudeFactor = Math.max(0.5, 1 - getDataInValue("高度") / 22000); // 高度影响
-    const machFactor = 1 + getDataInValue("马赫数") * 0.2; // 马赫数影响
-    
-    // 完整的dataOut样例数据
-    const mockDataOut = [
+    const mockData = [
       {
         name: "time",
-        data: [[currentTime, currentTime]]
+        data: Array.from({length: timePoints}, (_, i) => [
+          i * stepSize, // x轴：时间
+          i * stepSize  // y轴：也是时间（用于时间轴）
+        ])
       },
       {
         name: "高压涡轮出口总压",
-        data: [[currentTime, 850 + throttleFactor * 300 + Math.sin(currentTime * 0.5) * 50 + (Math.random() - 0.5) * 20]]
+        data: Array.from({length: timePoints}, (_, i) => [
+          i * stepSize, // x轴：时间
+          10 + Math.sin(i * 0.2) * 3 + Math.random() * 2 // y轴：压力值
+        ])
       },
       {
         name: "高压压气机出口总压", 
-        data: [[currentTime, 1200 + throttleFactor * 400 + Math.cos(currentTime * 0.3) * 60 + (Math.random() - 0.5) * 25]]
+        data: Array.from({length: timePoints}, (_, i) => [
+          i * stepSize,
+          15 + Math.cos(i * 0.15) * 2 + Math.random() * 1.5
+        ])
       },
       {
         name: "低压涡轮出口总压",
-        data: [[currentTime, 650 + throttleFactor * 250 + Math.sin(currentTime * 0.7) * 40 + (Math.random() - 0.5) * 15]]
+        data: Array.from({length: timePoints}, (_, i) => [
+          i * stepSize,
+          8 + Math.sin(i * 0.25) * 2.5 + Math.random() * 1.8
+        ])
       },
       {
-        name: "高压压气机出口温度",
-        data: [[currentTime, 800 + throttleFactor * 400 + altitudeFactor * 100 + Math.sin(currentTime * 0.4) * 30 + (Math.random() - 0.5) * 20]]
+        name: "发动机净马力",
+        data: Array.from({length: timePoints}, (_, i) => [
+          i * stepSize,
+          1200 + Math.sin(i * 0.1) * 100 + Math.random() * 50
+        ])
       },
       {
-        name: "高压涡轮进口温度",
-        data: [[currentTime, 1400 + throttleFactor * 300 + Math.cos(currentTime * 0.6) * 50 + (Math.random() - 0.5) * 25]]
+        name: "发动机总马力",
+        data: Array.from({length: timePoints}, (_, i) => [
+          i * stepSize,
+          1400 + Math.cos(i * 0.12) * 80 + Math.random() * 40
+        ])
       },
       {
-        name: "低压涡轮出口温度",
-        data: [[currentTime, 900 + throttleFactor * 200 + Math.sin(currentTime * 0.8) * 35 + (Math.random() - 0.5) * 18]]
+        name: "风扇出口总压",
+        data: Array.from({length: timePoints}, (_, i) => [
+          i * stepSize,
+          12 + Math.sin(i * 0.18) * 1.5 + Math.random() * 1
+        ])
       },
       {
-        name: "发动机净推力",
-        data: [[currentTime, 12000 + throttleFactor * 8000 + machFactor * 2000 + Math.sin(currentTime * 0.2) * 500 + (Math.random() - 0.5) * 200]]
+        name: "低压涡轮进口总压",
+        data: Array.from({length: timePoints}, (_, i) => [
+          i * stepSize,
+          20 + Math.cos(i * 0.22) * 4 + Math.random() * 2
+        ])
       },
       {
-        name: "发动机总推力",
-        data: [[currentTime, 14000 + throttleFactor * 10000 + machFactor * 2500 + Math.cos(currentTime * 0.25) * 600 + (Math.random() - 0.5) * 250]]
-      },
-      {
-        name: "推进效率",
-        data: [[currentTime, 0.75 + throttleFactor * 0.15 + Math.sin(currentTime * 0.3) * 0.05 + (Math.random() - 0.5) * 0.02]]
-      },
-      {
-        name: "热效率",
-        data: [[currentTime, 0.35 + throttleFactor * 0.1 + Math.cos(currentTime * 0.4) * 0.03 + (Math.random() - 0.5) * 0.015]]
-      },
-      {
-        name: "总效率",
-        data: [[currentTime, 0.28 + throttleFactor * 0.08 + Math.sin(currentTime * 0.5) * 0.02 + (Math.random() - 0.5) * 0.01]]
-      },
-      {
-        name: "燃油消耗率",
-        data: [[currentTime, 0.6 + throttleFactor * 0.4 + Math.cos(currentTime * 0.35) * 0.05 + (Math.random() - 0.5) * 0.02]]
-      },
-      {
-        name: "比冲",
-        data: [[currentTime, 1800 + throttleFactor * 400 + Math.sin(currentTime * 0.45) * 100 + (Math.random() - 0.5) * 50]]
-      },
-      {
-        name: "推重比",
-        data: [[currentTime, 6.5 + throttleFactor * 2.5 + Math.cos(currentTime * 0.55) * 0.5 + (Math.random() - 0.5) * 0.2]]
-      },
-      {
-        name: "单位推力",
-        data: [[currentTime, 1200 + throttleFactor * 600 + Math.sin(currentTime * 0.65) * 80 + (Math.random() - 0.5) * 40]]
-      },
-      {
-        name: "喷管出口速度",
-        data: [[currentTime, 1800 + throttleFactor * 500 + machFactor * 200 + Math.cos(currentTime * 0.75) * 100 + (Math.random() - 0.5) * 50]]
-      },
-      {
-        name: "喷管出口马赫数",
-        data: [[currentTime, 1.8 + throttleFactor * 0.8 + Math.sin(currentTime * 0.85) * 0.2 + (Math.random() - 0.5) * 0.1]]
-      },
-      {
-        name: "喷管出口总压",
-        data: [[currentTime, 101.3 + throttleFactor * 20 + Math.cos(currentTime * 0.95) * 5 + (Math.random() - 0.5) * 2]]
-      },
-      {
-        name: "喷管喉道面积",
-        data: [[currentTime, 0.25 + throttleFactor * 0.1 + Math.sin(currentTime * 1.05) * 0.02 + (Math.random() - 0.5) * 0.01]]
-      },
-      {
-        name: "喷管出口面积",
-        data: [[currentTime, 0.35 + throttleFactor * 0.15 + Math.cos(currentTime * 1.15) * 0.03 + (Math.random() - 0.5) * 0.015]]
+        name: "高压涡轮进口总压",
+        data: Array.from({length: timePoints}, (_, i) => [
+          i * stepSize,
+          25 + Math.sin(i * 0.16) * 3 + Math.random() * 1.5
+        ])
       }
     ];
     
-    console.log('生成模拟数据，当前时间步:', currentTimeStep, '当前时间:', currentTime);
-    return mockDataOut;
+    console.log('生成模拟数据:', mockData);
+    return mockData;
   }
 
-  // 根据dataOut更新uPlot图表数据 - 实现累积数据存储
+  // 根据dataOut更新uPlot图表数据
   function updateChartsFromDataOut(dataOutResult: Array<{name: string, data: number[][]}>) {
     dataOut = dataOutResult;
     console.log('开始更新uPlot图表数据，dataOut:', dataOut);
@@ -318,60 +290,45 @@
     curveCharts.forEach(chart => {
       console.log(`处理图表 ${chart.name}，曲线:`, chart.curves.map(c => c.name));
       
-      // 获取现有的图表数据或创建新的
-      let existingData = chartDataMap.get(chart.id) || [];
+      // 创建data_chart_{id}格式的数据
+      const dataChart: Array<{name: string, data: number[]}> = [];
       
-      // 查找time数据
+      // 首先添加time数据
       const timeData = dataOut.find(d => d.name === "time");
-      if (!timeData || !timeData.data || timeData.data.length === 0) {
-        console.log('没有找到time数据');
-        return;
+      if (timeData && timeData.data) {
+        dataChart.push({
+          name: "time",
+          data: timeData.data.map(point => point[0]) // 提取时间轴数据
+        });
       }
-      
-      const currentTime = timeData.data[0][0]; // 当前时间点
-      
-      // 更新或创建time数据
-      let timeEntry = existingData.find(item => item.name === 'time');
-      if (!timeEntry) {
-        timeEntry = { name: 'time', data: [] };
-        existingData.push(timeEntry);
-      }
-      timeEntry.data.push(currentTime);
       
       // 对每个图表的curves数组进行遍历
       chart.curves.forEach(curve => {
         // 根据curve.name在dataOut数组中查找匹配的name
         const curveData = dataOut.find(d => d.name === curve.name);
-        
-        // 查找或创建曲线数据条目
-        let curveEntry = existingData.find(item => item.name === curve.name);
-        if (!curveEntry) {
-          curveEntry = { name: curve.name, data: [] };
-          existingData.push(curveEntry);
-        }
-        
-        if (curveData && curveData.data && curveData.data.length > 0) {
+        if (curveData && curveData.data) {
           // 提取对应的data数组，其中data[1]作为y轴坐标
-          const yValue = curveData.data[0][1];
-          curveEntry.data.push(yValue);
+          dataChart.push({
+            name: curve.name,
+            data: curveData.data.map(point => point[1]) // 提取y轴数据
+          });
         } else {
           // 如果没有找到对应数据，使用默认值
-          const defaultValue = Math.random() * 10 + 10;
-          curveEntry.data.push(defaultValue);
-          console.log(`曲线 ${curve.name} 没有找到数据，使用默认值: ${defaultValue}`);
-        }
-      });
-      
-      // 保持最新100个数据点（固定显示窗口）
-      existingData.forEach(entry => {
-        if (entry.data.length > 100) {
-          entry.data = entry.data.slice(-100);
+          const defaultData = timeData ? 
+            timeData.data.map(() => Math.random() * 10 + 10) : 
+            Array.from({length: 50}, () => Math.random() * 10 + 10);
+          
+          dataChart.push({
+            name: curve.name,
+            data: defaultData
+          });
+          console.log(`曲线 ${curve.name} 没有找到数据，使用默认值`);
         }
       });
       
       // 将更新好的data_chart_{id}保存到chartDataMap
-      chartDataMap.set(chart.id, existingData);
-      console.log(`图表 ${chart.name} (ID: ${chart.id}) 数据已更新，当前数据点数:`, existingData[0]?.data.length || 0);
+      chartDataMap.set(chart.id, dataChart);
+      console.log(`图表 ${chart.name} (ID: ${chart.id}) 数据已更新:`, dataChart);
     });
     
     // 触发响应式更新
@@ -381,20 +338,10 @@
 
   // 更新监控表格数据
   function updateMonitorTableData(dataOutResult: Array<{name: string, data: number[][]}>) {
-    monitorTableData = dataOutResult
-      .filter(item => item.name !== 'time') // 排除time数据
-      .map(item => ({
-        parameter: item.name,
-        value: item.data.length > 0 ? item.data[0][1].toFixed(3) : '0.000' // 取当前值
-      }));
-  }
-
-  // 初始化图表数据
-  function initializeChartData(chartId: number) {
-    const emptyData: Array<{name: string, data: number[]}> = [
-      { name: "time", data: [] }
-    ];
-    chartDataMap.set(chartId, emptyData);
+    monitorTableData = dataOutResult.map(item => ({
+      parameter: item.name,
+      value: item.data.length > 0 ? item.data[item.data.length - 1][1].toFixed(3) : '0.000' // 取最后一个时间点的值
+    }));
   }
 
   // 更新实时数据
@@ -418,18 +365,21 @@
         updateChartsFromDataOut(mockData);
         updateMonitorTableData(mockData);
       }
-      
-      // 增加时间步
-      currentTimeStep++;
-      
     } catch (error) {
       console.error('实时数据更新失败:', error);
       // 出错时使用模拟数据
       const mockData = generateMockRealtimeData();
       updateChartsFromDataOut(mockData);
       updateMonitorTableData(mockData);
-      currentTimeStep++;
     }
+  }
+
+  // 初始化图表数据
+  function initializeChartData(chartId: number) {
+    const emptyData: Array<{name: string, data: number[]}> = [
+      { name: "time", data: [] }
+    ];
+    chartDataMap.set(chartId, emptyData);
   }
 
   async function handleStart() {
@@ -440,7 +390,6 @@
     } else {
       // 开始 - 首次调用后端
       isCalculating = true;
-      currentTimeStep = 0; // 重置时间步
       
       try {
         // 更新dataIn
@@ -472,8 +421,6 @@
           }
         });
         
-        currentTimeStep++; // 增加时间步
-        
       } catch (error) {
         console.error('首次后端调用失败:', error);
         // 即使首次调用失败，也继续显示界面并使用模拟数据
@@ -488,7 +435,6 @@
             initializeChartData(chart.id);
           }
         });
-        currentTimeStep++;
       }
     }
     
@@ -518,7 +464,6 @@
     isCalculating = false;
     isPaused = false;
     showMonitorModal = false;
-    currentTimeStep = 0; // 重置时间步
     
     // 停止实时数据更新
     if (simulationTimer) {
@@ -585,9 +530,7 @@
           chartId: id,
           chartName: curveCharts.find(c => c.id === id)?.name || `图表-${id}`,
           data: data
-        })),
-        totalTimeSteps: currentTimeStep,
-        simulationStep: selectedSimulationStep
+        }))
       };
       
       const dataStr = JSON.stringify(exportData, null, 2);
@@ -671,34 +614,6 @@
 
       <!-- 中间图表区域 - 使用uPlot图表组件 -->
       <div class="flex-1 p-4 overflow-y-auto">
-        <!-- 实时计算状态显示 -->
-        {#if showResults}
-          <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-4">
-            <div class="flex justify-between items-center">
-              <div class="flex items-center gap-4">
-                <div class="flex items-center gap-2">
-                  <div class="w-2 h-2 bg-green-500 rounded-full {isCalculating ? 'animate-pulse' : ''}"></div>
-                  <span class="text-sm text-gray-300">
-                    {isCalculating ? '实时计算中...' : isPaused ? '计算已暂停' : '计算已停止'}
-                  </span>
-                </div>
-                <div class="text-xs text-gray-400">
-                  时间步: {currentTimeStep} | 仿真时间: {(currentTimeStep * parseFloat(selectedSimulationStep)).toFixed(3)}s
-                </div>
-                <div class="text-xs text-gray-400">
-                  步长: {selectedSimulationStep}s | 油门角度: {throttleValue.toFixed(1)}°
-                </div>
-              </div>
-              <button 
-                class="text-xs text-blue-400 hover:text-blue-300 underline"
-                onclick={openMonitorModal}
-              >
-                查看实时监控
-              </button>
-            </div>
-          </div>
-        {/if}
-
         <!-- uPlot图表展示区域 - 使用Grid布局确保整齐划一 -->
         <div class="grid grid-cols-1 gap-6">
           {#each curveCharts as chart (chart.id)}
