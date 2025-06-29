@@ -677,18 +677,20 @@
         </div>
       </div>
     {:else}
-      <!-- 计算结果界面 - 删除右侧控制面板，只保留左侧曲线组面板和中间图表区域 -->
+      <!-- 计算结果界面 - 调整宽度比例：左侧1/5，右侧4/5 -->
       <div class="flex h-full gap-4">
-        <!-- 左侧曲线组面板 - 使用封装的组件 -->
-        <CurveChartManager 
-          bind:charts={curveCharts}
-          leftParameters={leftParameterList}
-          rightParameters={rightParameterList}
-          onChartsChange={handleChartsChange}
-        />
+        <!-- 左侧曲线组面板 - 占1/5宽度 -->
+        <div class="w-1/5 flex-shrink-0">
+          <CurveChartManager 
+            bind:charts={curveCharts}
+            leftParameters={leftParameterList}
+            rightParameters={rightParameterList}
+            onChartsChange={handleChartsChange}
+          />
+        </div>
 
-        <!-- 右侧图表区域 - 占据剩余空间 -->
-        <div class="flex-1 flex flex-col">
+        <!-- 右侧图表区域 - 占4/5宽度 -->
+        <div class="w-4/5 flex flex-col">
           <!-- 左上方返回按钮 -->
           <div class="mb-4">
             <button
@@ -702,12 +704,14 @@
             </button>
           </div>
 
-          <!-- 图表显示区域 -->
+          <!-- 图表显示区域 - 两个图表占一行，第三个在下一行 -->
           <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg p-4 overflow-y-auto">
-            <div class="grid grid-cols-1 gap-6">
-              {#each curveCharts as chart (chart.id)}
-                <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-lg">
-                  <!-- 图表标题 - 删除data_chart信息显示 -->
+            <!-- 使用Grid布局：2列，自动行 -->
+            <div class="grid grid-cols-2 gap-4 auto-rows-min">
+              {#each curveCharts as chart, index (chart.id)}
+                <!-- 每个图表容器 -->
+                <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-lg {index === 2 ? 'col-span-1' : ''}">
+                  <!-- 图表标题 -->
                   <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold text-gray-200 flex items-center gap-2">
                       <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -715,7 +719,6 @@
                       </svg>
                       {chart.name}
                     </h3>
-                    <!-- 删除data_chart_{id}显示信息 -->
                   </div>
 
                   <!-- uPlot图表容器 -->
