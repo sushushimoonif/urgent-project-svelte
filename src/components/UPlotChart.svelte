@@ -19,6 +19,14 @@
   let uPlot: any = null;
   let isLoading = $state(true);
   let loadError = $state(false);
+  
+  // Tooltip状态
+  let showTooltip = $state(false);
+  let tooltipPosition = $state({ x: 0, y: 0 });
+  let tooltipData = $state<{time: string, values: Array<{name: string, value: string, color: string}>}>({
+    time: '',
+    values: []
+  });
 
   // 颜色配置
   const colors = [
@@ -167,18 +175,7 @@
         }
       ],
       legend: {
-        show: true,
-        live: true,
-        markers: {
-          show: true,
-          width: 2,
-          stroke: (u: any, seriesIdx: number) => {
-            return series[seriesIdx]?.stroke || "#666";
-          },
-          fill: (u: any, seriesIdx: number) => {
-            return series[seriesIdx]?.stroke || "#666";
-          }
-        }
+        show: false // 删除图例
       },
       cursor: {
         show: true,
@@ -203,10 +200,10 @@
           time: false,
           auto: true,
           range: (u: any, dataMin: number, dataMax: number) => {
-            // 固定显示最新100个数据点的时间窗口
-            if (data.length > 100) {
+            // 固定显示最新20个数据点的时间窗口
+            if (data.length > 20) {
               const latestTime = dataMax;
-              const windowSize = data.length > 1 ? (data[data.length - 1][0] - data[Math.max(0, data.length - 100)][0]) : 10;
+              const windowSize = data.length > 1 ? (data[data.length - 1][0] - data[Math.max(0, data.length - 20)][0]) : 10;
               return [latestTime - windowSize, latestTime];
             }
             return [dataMin, dataMax];
@@ -222,17 +219,41 @@
           }
         }
       },
-      plugins: [
-        {
-          hooks: {
-            setCursor: [
-              (u: any) => {
-                // 自定义tooltip逻辑可以在这里实现
-              }
-            ]
+      hooks: {
+        setCursor: [
+          (u: any) => {
+            const { left, top, idx } = u.cursor;
+            
+            if (idx !== null && idx !== undefined && data[idx]) {
+              // 显示tooltip
+              showTooltip = true;
+              
+              // 计算tooltip位置（鼠标右下方）
+              const rect = chartContainer.getBoundingClientRect();
+              tooltipPosition = {
+                x: left + 15, // 鼠标右侧15px
+                y: top + 15   // 鼠标下方15px
+              };
+              
+              // 构建tooltip数据
+              const timeValue = data[idx][0];
+              const values = curves.map((curve, index) => ({
+                name: curve.name,
+                value: data[idx][index + 1]?.toFixed(3) || '0.000',
+                color: colors[index % colors.length]
+              }));
+              
+              tooltipData = {
+                time: `时间: ${timeValue.toFixed(3)}s`,
+                values: values
+              };
+            } else {
+              // 隐藏tooltip
+              showTooltip = false;
+            }
           }
-        }
-      ]
+        ]
+      }
     };
 
     try {
@@ -266,23 +287,31 @@
     return [timeData, ...seriesData];
   }
 
-  // 更新图表数据
+  // 更新图表数据 - 放慢动画速度三倍
   function updateChart() {
     if (!uplot || !data) return;
 
     try {
       const transformedData = transformDataForUPlot(data);
-      uplot.setData(transformedData);
       
-      // 如果数据超过100个点，自动滚动到最新数据
-      if (data.length > 100) {
-        const latestTime = data[data.length - 1][0];
-        const windowSize = data[data.length - 1][0] - data[Math.max(0, data.length - 100)][0];
-        uplot.setScale('x', {
-          min: latestTime - windowSize,
-          max: latestTime
-        });
-      }
+      // 使用setTimeout来放慢动画速度（延迟更新）
+      setTimeout(() => {
+        uplot.setData(transformedData);
+        
+        // 如果数据超过20个点，自动滚动到最新数据
+        if (data.length > 20) {
+          const latestTime = data[data.length - 1][0];
+          const windowSize = data[data.length - 1][0] - data[Math.max(0, data.length - 20)][0];
+          
+          // 平滑滚动到新位置
+          setTimeout(() => {
+            uplot.setScale('x', {
+              min: latestTime - windowSize,
+              max: latestTime
+            });
+          }, 100); // 额外延迟100ms实现更平滑的滚动
+        }
+      }, 50); // 延迟50ms更新，使动画更平滑
       
       console.log(`图表 ${chartName} 数据更新成功，当前数据点: ${data.length}`);
     } catch (error) {
@@ -339,7 +368,7 @@
   <link rel="stylesheet" href="/lib/uPlot.min.css">
 </svelte:head>
 
-<div class="w-full h-full">
+<div class="w-full h-full relative">
   <!-- 图表容器 -->
   <div 
     bind:this={chartContainer}
@@ -379,11 +408,45 @@
     {/if}
   </div>
 
+  <!-- 自定义Tooltip - 半透明小框，位置在鼠标右下方 -->
+  {#if showTooltip}
+    <div 
+      class="absolute z-50 bg-gray-800 bg-opacity-90 border border-gray-600 rounded-lg p-3 shadow-lg pointer-events-none"
+      style="left: {tooltipPosition.x}px; top: {tooltipPosition.y}px; backdrop-filter: blur(4px);"
+    >
+      <!-- 时间显示 -->
+      <div class="text-xs text-gray-300 font-mono mb-2 border-b border-gray-600 pb-1">
+        {tooltipData.time}
+      </div>
+      
+      <!-- 曲线数据 -->
+      <div class="space-y-1">
+        {#each tooltipData.values as item}
+          <div class="flex items-center gap-2 text-xs">
+            <!-- 颜色指示器 -->
+            <div 
+              class="w-3 h-0.5 rounded"
+              style="background-color: {item.color};"
+            ></div>
+            <!-- 参数名称 -->
+            <span class="text-gray-300 flex-1 truncate" title={item.name}>
+              {item.name}
+            </span>
+            <!-- 数值 -->
+            <span class="text-white font-mono">
+              {item.value}
+            </span>
+          </div>
+        {/each}
+      </div>
+    </div>
+  {/if}
+
   <!-- 图表信息 -->
   <div class="mt-2 flex justify-between items-center text-xs text-gray-400">
     <div class="flex items-center gap-4">
       <span>数据点: {data.length}</span>
-      <span>显示窗口: {Math.min(data.length, 100)} 点</span>
+      <span>显示窗口: {Math.min(data.length, 20)} 点</span>
       <span>曲线数: {curves.length}</span>
     </div>
     <div class="flex items-center gap-2">

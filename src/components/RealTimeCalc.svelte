@@ -115,7 +115,7 @@
     { name: '喷管出口速度', selected: false }
   ]);
 
-  // uPlot图表数据存储 - 每个图表一个数据集
+  // uPlot图表数据存储 - 每个图表一个数据集，修改为20个数据点
   let chartDataSets = $state<Map<number, {name: string, data: number[][]}>>(new Map());
   let simulationTimer: number | null = null;
   let currentTime = $state(0);
@@ -299,9 +299,9 @@
       // 添加新的数据点
       existingDataSet.data.push(data_chart.data);
       
-      // 保持固定的100个数据点窗口
-      if (existingDataSet.data.length > 100) {
-        existingDataSet.data = existingDataSet.data.slice(-100);
+      // 保持固定的20个数据点窗口（修改从100改为20）
+      if (existingDataSet.data.length > 20) {
+        existingDataSet.data = existingDataSet.data.slice(-20);
       }
       
       // 更新数据集
@@ -329,7 +329,7 @@
       }));
   }
 
-  // 更新实时数据
+  // 更新实时数据 - 放慢动画速度三倍
   async function updateRealtimeData() {
     if (!isCalculating || isPaused) return;
     
@@ -432,12 +432,12 @@
       }
     }
     
-    // 启动实时数据更新定时器 - 使用用户选择的仿真步长
+    // 启动实时数据更新定时器 - 放慢速度三倍
     if (simulationTimer) {
       clearInterval(simulationTimer);
     }
-    const intervalMs = parseFloat(selectedSimulationStep) * 1000; // 转换为毫秒
-    console.log(`启动定时器，间隔: ${intervalMs}ms (${selectedSimulationStep}秒)`);
+    const intervalMs = parseFloat(selectedSimulationStep) * 1000 * 3; // 乘以3，放慢三倍
+    console.log(`启动定时器，间隔: ${intervalMs}ms (${selectedSimulationStep * 3}秒)`);
     simulationTimer = setInterval(updateRealtimeData, intervalMs);
   }
 
