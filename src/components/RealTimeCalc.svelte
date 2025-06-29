@@ -1,7 +1,7 @@
 <script lang="ts">
   import { invoke } from '@tauri-apps/api/tauri';
   import CurveChartManager from './CurveChartManager.svelte';
-  import ChartDisplay from './ChartDisplay.svelte';
+  import UPlotChart from './UPlotChart.svelte';
   import RealTimeMonitor from './RealTimeMonitor.svelte';
 
   let isCalculating = $state(false);
@@ -114,9 +114,10 @@
     { name: '循环压力损失系数', selected: false }
   ]);
 
-  // 图表数据存储 - 基于dataOut渲染
-  let chartData = $state<Map<number, Array<{time: number, values: number[]}>>>(new Map());
+  // uPlot图表数据存储 - 为每个图表定义data_chart_{id}
+  let chartDataMap = $state<Map<number, Array<{name: string, data: number[][]}>>>(new Map());
   let simulationTimer: number | null = null;
+  let timeCounter = $state(0); // 时间计数器
 
   // 实时监控表格数据
   let monitorTableData = $state<Array<{parameter: string, value: string}>>([]);
@@ -206,154 +207,128 @@
     }
   }
 
-  // 生成模拟实时数据 - dataOut格式，包含完整的时间序列数据
+  // 生成模拟实时数据 - dataOut格式样例
   function generateMockRealtimeData() {
-    const timePoints = 100; // 生成100个时间点的数据
-    const stepSize = parseFloat(selectedSimulationStep); // 使用当前仿真步长
+    const stepSize = parseFloat(selectedSimulationStep);
     
+    // 模拟dataOut样例数据
     const mockData = [
       {
+        name: "time",
+        data: [[timeCounter * stepSize, timeCounter * stepSize]] // 时间数据
+      },
+      {
         name: "高压涡轮出口总压",
-        data: Array.from({length: timePoints}, (_, i) => [
-          i * stepSize, // x轴：时间
-          10 + Math.sin(i * 0.2) * 3 + Math.random() * 2 // y轴：压力值
-        ])
+        data: [[timeCounter * stepSize, 1120 + Math.sin(timeCounter * 0.1) * 50 + Math.random() * 20]]
       },
       {
         name: "高压压气机出口总压", 
-        data: Array.from({length: timePoints}, (_, i) => [
-          i * stepSize,
-          15 + Math.cos(i * 0.15) * 2 + Math.random() * 1.5
-        ])
+        data: [[timeCounter * stepSize, 1280 + Math.cos(timeCounter * 0.15) * 40 + Math.random() * 15]]
       },
       {
         name: "低压涡轮出口总压",
-        data: Array.from({length: timePoints}, (_, i) => [
-          i * stepSize,
-          8 + Math.sin(i * 0.25) * 2.5 + Math.random() * 1.8
-        ])
+        data: [[timeCounter * stepSize, 890 + Math.sin(timeCounter * 0.2) * 30 + Math.random() * 25]]
       },
       {
         name: "发动机净马力",
-        data: Array.from({length: timePoints}, (_, i) => [
-          i * stepSize,
-          1200 + Math.sin(i * 0.1) * 100 + Math.random() * 50
-        ])
+        data: [[timeCounter * stepSize, 15420 + Math.sin(timeCounter * 0.05) * 500 + Math.random() * 100]]
       },
       {
         name: "发动机总马力",
-        data: Array.from({length: timePoints}, (_, i) => [
-          i * stepSize,
-          1400 + Math.cos(i * 0.12) * 80 + Math.random() * 40
-        ])
+        data: [[timeCounter * stepSize, 16890 + Math.cos(timeCounter * 0.08) * 400 + Math.random() * 80]]
       },
       {
         name: "风扇出口总压",
-        data: Array.from({length: timePoints}, (_, i) => [
-          i * stepSize,
-          12 + Math.sin(i * 0.18) * 1.5 + Math.random() * 1
-        ])
+        data: [[timeCounter * stepSize, 245 + Math.sin(timeCounter * 0.12) * 20 + Math.random() * 10]]
       },
       {
         name: "低压涡轮进口总压",
-        data: Array.from({length: timePoints}, (_, i) => [
-          i * stepSize,
-          20 + Math.cos(i * 0.22) * 4 + Math.random() * 2
-        ])
+        data: [[timeCounter * stepSize, 890 + Math.cos(timeCounter * 0.18) * 35 + Math.random() * 15]]
       },
       {
         name: "高压涡轮进口总压",
-        data: Array.from({length: timePoints}, (_, i) => [
-          i * stepSize,
-          25 + Math.sin(i * 0.16) * 3 + Math.random() * 1.5
-        ])
+        data: [[timeCounter * stepSize, 1120 + Math.sin(timeCounter * 0.14) * 45 + Math.random() * 20]]
       }
     ];
     
-    console.log('生成模拟数据:', mockData);
+    console.log('生成模拟数据，时间点:', timeCounter * stepSize, '数据:', mockData);
     return mockData;
   }
 
-  // 响应式函数：根据dataOut更新图表数据 - 核心图表渲染逻辑
-  function updateChartsFromDataOut(dataOutResult: Array<{name: string, data: number[][]}>) {
-    dataOut = dataOutResult;
-    console.log('开始更新图表数据，dataOut:', dataOut);
+  // 转换dataOut为图表数据格式
+  function convertDataOutToChartData(dataOutResult: Array<{name: string, data: number[][]}>) {
+    console.log('开始转换dataOut为图表数据:', dataOutResult);
     
-    // 遍历curveCharts数组中的每个图表对象
+    // 遍历每个图表
     curveCharts.forEach(chart => {
-      console.log(`处理图表 ${chart.name}，曲线:`, chart.curves.map(c => c.name));
+      console.log(`处理图表 ${chart.name} (ID: ${chart.id})`);
       
-      const chartDataPoints: Array<{time: number, values: number[]}> = [];
+      // 获取当前图表的数据
+      let currentChartData = chartDataMap.get(chart.id) || [];
       
-      // 找到第一条曲线的数据来确定时间点数量
-      const firstCurve = chart.curves[0];
-      if (!firstCurve) {
-        console.log(`图表 ${chart.name} 没有曲线配置`);
-        return;
+      // 创建新的数据点
+      const newDataPoint: Array<{name: string, data: number[][]}> = [];
+      
+      // 添加时间数据
+      const timeData = dataOutResult.find(d => d.name === 'time');
+      if (timeData) {
+        // 合并时间数据
+        const existingTimeData = currentChartData.find(d => d.name === 'time');
+        if (existingTimeData) {
+          existingTimeData.data.push(...timeData.data);
+        } else {
+          newDataPoint.push({ name: 'time', data: [...timeData.data] });
+        }
       }
       
-      // 根据curve.name在dataOut数组中查找匹配的name
-      const firstCurveData = dataOut.find(d => d.name === firstCurve.name);
-      
-      if (firstCurveData && firstCurveData.data.length > 0) {
-        console.log(`找到第一条曲线 ${firstCurve.name} 的数据，时间点数量:`, firstCurveData.data.length);
-        
-        // 遍历每个时间点，提取对应的data数组
-        for (let timeIndex = 0; timeIndex < firstCurveData.data.length; timeIndex++) {
-          const values: number[] = [];
-          
-          // 对每个图表的curves数组进行遍历
-          chart.curves.forEach((curve, curveIndex) => {
-            // 获取curve.name对应的value值
-            const curveData = dataOut.find(d => d.name === curve.name);
-            if (curveData && curveData.data[timeIndex]) {
-              // 提取对应的data数组，其中data[1]作为y轴坐标
-              values.push(curveData.data[timeIndex][1]);
-            } else {
-              // 如果没有找到对应数据，使用默认值
-              values.push(10 + curveIndex * 5 + Math.random() * 2);
-              console.log(`曲线 ${curve.name} 在时间点 ${timeIndex} 没有数据，使用默认值`);
+      // 为每条曲线添加数据
+      chart.curves.forEach(curve => {
+        const curveData = dataOutResult.find(d => d.name === curve.name);
+        if (curveData) {
+          const existingCurveData = currentChartData.find(d => d.name === curve.name);
+          if (existingCurveData) {
+            existingCurveData.data.push(...curveData.data);
+            // 保持固定显示窗口为最新100个数据点
+            if (existingCurveData.data.length > 100) {
+              existingCurveData.data = existingCurveData.data.slice(-100);
             }
-          });
-          
-          // 使用提取的坐标数据，data[0]作为x轴坐标（时间）
-          chartDataPoints.push({
-            time: firstCurveData.data[timeIndex][0], // x轴坐标
-            values: values // y轴坐标数组
-          });
+          } else {
+            newDataPoint.push({ name: curve.name, data: [...curveData.data] });
+          }
         }
-        
-        console.log(`图表 ${chart.name} 生成了 ${chartDataPoints.length} 个数据点`);
-      } else {
-        console.log(`图表 ${chart.name} 的第一条曲线 ${firstCurve.name} 没有找到数据`);
-        
-        // 如果没有找到数据，生成默认的空数据点
-        for (let i = 0; i < 50; i++) {
-          const values = chart.curves.map((_, curveIndex) => 
-            10 + curveIndex * 5 + Math.random() * 2
-          );
-          chartDataPoints.push({
-            time: i * parseFloat(selectedSimulationStep),
-            values: values
-          });
+      });
+      
+      // 合并新数据点到当前图表数据
+      newDataPoint.forEach(newData => {
+        const existingData = currentChartData.find(d => d.name === newData.name);
+        if (!existingData) {
+          currentChartData.push(newData);
         }
+      });
+      
+      // 确保时间数据也保持100个数据点的限制
+      const timeDataInChart = currentChartData.find(d => d.name === 'time');
+      if (timeDataInChart && timeDataInChart.data.length > 100) {
+        timeDataInChart.data = timeDataInChart.data.slice(-100);
       }
       
-      // 在对应的图表区域绘制曲线
-      chartData.set(chart.id, chartDataPoints);
+      // 更新图表数据
+      chartDataMap.set(chart.id, currentChartData);
+      console.log(`图表 ${chart.name} 数据更新完成，当前数据点数:`, currentChartData.find(d => d.name === 'time')?.data.length || 0);
     });
     
     // 触发响应式更新
-    chartData = new Map(chartData);
-    console.log('图表数据更新完成，当前chartData:', chartData);
+    chartDataMap = new Map(chartDataMap);
   }
 
   // 更新监控表格数据
   function updateMonitorTableData(dataOutResult: Array<{name: string, data: number[][]}>) {
-    monitorTableData = dataOutResult.map(item => ({
-      parameter: item.name,
-      value: item.data.length > 0 ? item.data[item.data.length - 1][1].toFixed(3) : '0.000' // 取最后一个时间点的值
-    }));
+    monitorTableData = dataOutResult
+      .filter(item => item.name !== 'time') // 排除时间数据
+      .map(item => ({
+        parameter: item.name,
+        value: item.data.length > 0 ? item.data[item.data.length - 1][1].toFixed(3) : '0.000'
+      }));
   }
 
   // 更新实时数据
@@ -369,30 +344,33 @@
       
       // 更新dataOut和图表
       if (Array.isArray(backendData)) {
-        updateChartsFromDataOut(backendData);
+        convertDataOutToChartData(backendData);
         updateMonitorTableData(backendData);
       } else {
         // 如果后端数据格式不正确，使用模拟数据
         const mockData = generateMockRealtimeData();
-        updateChartsFromDataOut(mockData);
+        convertDataOutToChartData(mockData);
         updateMonitorTableData(mockData);
       }
+      
+      // 增加时间计数器
+      timeCounter++;
+      
     } catch (error) {
       console.error('实时数据更新失败:', error);
       // 出错时使用模拟数据
       const mockData = generateMockRealtimeData();
-      updateChartsFromDataOut(mockData);
+      convertDataOutToChartData(mockData);
       updateMonitorTableData(mockData);
+      timeCounter++;
     }
   }
 
   // 初始化图表数据
-  function initializeChartData(chartId: number, curves: any[]) {
-    const data: Array<{time: number, values: number[]}> = [];
-    chartData.set(chartId, data);
+  function initializeChartData(chartId: number) {
+    chartDataMap.set(chartId, []);
   }
 
-  // 响应式函数：监听计算按钮的点击事件
   async function handleStart() {
     if (isPaused) {
       // 继续
@@ -401,6 +379,7 @@
     } else {
       // 开始 - 首次调用后端
       isCalculating = true;
+      timeCounter = 0; // 重置时间计数器
       
       try {
         // 更新dataIn
@@ -412,13 +391,12 @@
         console.log('首次后端调用成功:', initialData);
         
         if (Array.isArray(initialData)) {
-          // 使用响应式函数更新图表数据
-          updateChartsFromDataOut(initialData);
+          convertDataOutToChartData(initialData);
           updateMonitorTableData(initialData);
         } else {
           // 使用模拟数据
           const mockData = generateMockRealtimeData();
-          updateChartsFromDataOut(mockData);
+          convertDataOutToChartData(mockData);
           updateMonitorTableData(mockData);
         }
         
@@ -428,25 +406,28 @@
         
         // 为所有现有图表初始化数据
         curveCharts.forEach(chart => {
-          if (!chartData.has(chart.id)) {
-            initializeChartData(chart.id, chart.curves);
+          if (!chartDataMap.has(chart.id)) {
+            initializeChartData(chart.id);
           }
         });
+        
+        timeCounter++; // 增加时间计数器
         
       } catch (error) {
         console.error('首次后端调用失败:', error);
         // 即使首次调用失败，也继续显示界面并使用模拟数据
         const mockData = generateMockRealtimeData();
-        updateChartsFromDataOut(mockData);
+        convertDataOutToChartData(mockData);
         updateMonitorTableData(mockData);
         
         showResults = true;
         showMonitorModal = true;
         curveCharts.forEach(chart => {
-          if (!chartData.has(chart.id)) {
-            initializeChartData(chart.id, chart.curves);
+          if (!chartDataMap.has(chart.id)) {
+            initializeChartData(chart.id);
           }
         });
+        timeCounter++;
       }
     }
     
@@ -476,6 +457,7 @@
     isCalculating = false;
     isPaused = false;
     showMonitorModal = false;
+    timeCounter = 0; // 重置时间计数器
     
     // 停止实时数据更新
     if (simulationTimer) {
@@ -484,7 +466,7 @@
     }
     
     // 清理图表数据
-    chartData.clear();
+    chartDataMap.clear();
     dataOut = [];
     monitorTableData = [];
     
@@ -538,7 +520,7 @@
         timestamp: new Date().toISOString(),
         dataIn: dataIn,
         dataOut: dataOut,
-        chartData: Array.from(chartData.entries()).map(([id, data]) => ({
+        chartData: Array.from(chartDataMap.entries()).map(([id, data]) => ({
           chartId: id,
           chartName: curveCharts.find(c => c.id === id)?.name || `图表-${id}`,
           data: data
@@ -569,8 +551,8 @@
     curveCharts = newCharts;
     // 为新图表初始化数据
     curveCharts.forEach(chart => {
-      if (!chartData.has(chart.id)) {
-        initializeChartData(chart.id, chart.curves);
+      if (!chartDataMap.has(chart.id)) {
+        initializeChartData(chart.id);
       }
     });
   }
@@ -592,8 +574,8 @@
   // 初始化所有现有图表的空数据
   $effect(() => {
     curveCharts.forEach(chart => {
-      if (!chartData.has(chart.id)) {
-        initializeChartData(chart.id, chart.curves);
+      if (!chartDataMap.has(chart.id)) {
+        initializeChartData(chart.id);
       }
     });
   });
@@ -624,109 +606,20 @@
         onChartsChange={handleChartsChange}
       />
 
-      <!-- 中间图表区域 - 使用封装的组件，应用响应式布局 -->
+      <!-- 中间图表区域 - uPlot实时滚动曲线图 -->
       <div class="flex-1 p-4 overflow-y-auto">
         <!-- 图表展示区域 - 使用Grid布局确保整齐划一 -->
         <div class="grid grid-cols-1 gap-6">
           {#each curveCharts as chart (chart.id)}
-            <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-lg">
-              <!-- 图表标题 - 统一样式 -->
-              <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold text-gray-200 flex items-center gap-2">
-                  <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                  </svg>
-                  {chart.name}
-                </h3>
-                <div class="text-sm text-gray-400">
-                  {chart.curves.length} 条曲线
-                </div>
-              </div>
-
-              <!-- SVG图表容器 - 统一尺寸和样式 -->
-              <div class="bg-gray-900 rounded-lg p-4 border border-gray-600">
-                <svg width="100%" height="300" viewBox="0 0 800 300" class="overflow-visible">
-                  <!-- 网格线 - 统一样式 -->
-                  {#each Array(10) as _, i}
-                    <line x1="60" y1={30 + i * 24} x2="740" y2={30 + i * 24} stroke="#374151" stroke-width="0.5" opacity="0.3"/>
-                  {/each}
-                  {#each Array(15) as _, i}
-                    <line x1={60 + i * 45.33} y1="30" x2={60 + i * 45.33} y2="270" stroke="#374151" stroke-width="0.5" opacity="0.3"/>
-                  {/each}
-
-                  <!-- 坐标轴 - 统一样式 -->
-                  <line x1="60" y1="270" x2="740" y2="270" stroke="#6b7280" stroke-width="2"/>
-                  <line x1="60" y1="30" x2="60" y2="270" stroke="#6b7280" stroke-width="2"/>
-
-                  <!-- 曲线绘制 - 根据dataOut数据渲染 -->
-                  {#if chartData.has(chart.id)}
-                    {@const data = chartData.get(chart.id)}
-                    {#if data && data.length > 0}
-                      {#each chart.curves as curve, curveIndex}
-                        {@const color = ['#fbbf24', '#f97316', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444'][curveIndex % 6]}
-                        {@const pathData = data.map((point, i) => {
-                          const x = 60 + (i / (data.length - 1)) * 680;
-                          const y = 270 - ((point.values[curveIndex] || 0) / 30) * 240; // 假设最大值为30
-                          return i === 0 ? `M ${x} ${y}` : `L ${x} ${y}`;
-                        }).join(' ')}
-                        
-                        <path
-                          d={pathData}
-                          fill="none"
-                          stroke={color}
-                          stroke-width="2"
-                          opacity="0.8"
-                        />
-                        
-                        <!-- 数据点 -->
-                        {#each data.slice(0, Math.min(data.length, 20)) as point, i}
-                          {@const x = 60 + (i / (Math.min(data.length, 20) - 1)) * 680}
-                          {@const y = 270 - ((point.values[curveIndex] || 0) / 30) * 240}
-                          <circle cx={x} cy={y} r="2" fill={color} opacity="0.7"/>
-                        {/each}
-                      {/each}
-                    {/if}
-                  {/if}
-
-                  <!-- Y轴标签 - 统一字体和颜色 -->
-                  <text x="45" y="35" fill="#9ca3af" font-size="12" text-anchor="end" font-family="monospace">30</text>
-                  <text x="45" y="90" fill="#9ca3af" font-size="12" text-anchor="end" font-family="monospace">24</text>
-                  <text x="45" y="150" fill="#9ca3af" font-size="12" text-anchor="end" font-family="monospace">18</text>
-                  <text x="45" y="210" fill="#9ca3af" font-size="12" text-anchor="end" font-family="monospace">12</text>
-                  <text x="45" y="270" fill="#9ca3af" font-size="12" text-anchor="end" font-family="monospace">0</text>
-
-                  <!-- X轴标签 - 统一字体和颜色 -->
-                  <text x="60" y="290" fill="#9ca3af" font-size="12" text-anchor="middle" font-family="monospace">0s</text>
-                  <text x="200" y="290" fill="#9ca3af" font-size="12" text-anchor="middle" font-family="monospace">1s</text>
-                  <text x="400" y="290" fill="#9ca3af" font-size="12" text-anchor="middle" font-family="monospace">2s</text>
-                  <text x="600" y="290" fill="#9ca3af" font-size="12" text-anchor="middle" font-family="monospace">3s</text>
-                  <text x="740" y="290" fill="#9ca3af" font-size="12" text-anchor="middle" font-family="monospace">4s</text>
-
-                  <!-- 轴标题 -->
-                  <text x="400" y="315" fill="#d1d5db" font-size="14" text-anchor="middle" font-weight="500">时间 (秒)</text>
-                  <text x="25" y="150" fill="#d1d5db" font-size="14" text-anchor="middle" font-weight="500" transform="rotate(-90 25 150)">数值</text>
-                </svg>
-
-                <!-- 图例 - 统一样式和布局 -->
-                <div class="flex flex-wrap gap-4 mt-4 px-2">
-                  {#each chart.curves as curve, index}
-                    {@const color = ['#fbbf24', '#f97316', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444'][index % 6]}
-                    <div class="flex items-center gap-2">
-                      <div class="w-4 h-0.5 rounded" style="background-color: {color}"></div>
-                      <span class="text-sm text-gray-300 font-medium">{curve.name}</span>
-                      {#if chartData.has(chart.id)}
-                        {@const data = chartData.get(chart.id)}
-                        {#if data && data.length > 0}
-                          <span class="text-xs text-gray-500 font-mono">
-                            ({(data[data.length - 1]?.values[index] || 0).toFixed(2)})
-                          </span>
-                        {/if}
-                      {/if}
-                    </div>
-                  {/each}
-                </div>
-              </div>
-            </div>
+            <UPlotChart
+              chartId={chart.id}
+              chartName={chart.name}
+              curves={chart.curves}
+              data={chartDataMap.get(chart.id) || []}
+              width={800}
+              height={300}
+              maxDataPoints={100}
+            />
           {/each}
         </div>
       </div>
