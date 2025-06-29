@@ -20,7 +20,7 @@
   let isLoading = $state(true);
   let loadError = $state(false);
   
-  // Tooltip状态
+  // Tooltip状态 - 修改位置为鼠标左上方，半透明度改为70%
   let showTooltip = $state(false);
   let tooltipPosition = $state({ x: 0, y: 0 });
   let tooltipData = $state<{time: string, values: Array<{name: string, value: string, color: string}>}>({
@@ -154,7 +154,21 @@
           ticks: {
             show: true,
             stroke: "#6b7280",
-            width: 1
+            width: 1,
+            // 增大X轴刻度跨度，使滚动更慢
+            size: 20
+          },
+          // 增大X轴刻度间隔
+          splits: (u: any, axisIdx: number, scaleMin: number, scaleMax: number, foundIncr: number, foundSpace: number) => {
+            // 将刻度间隔增大2倍，使滚动更慢
+            const customIncr = foundIncr * 2;
+            const splits = [];
+            let val = Math.ceil(scaleMin / customIncr) * customIncr;
+            while (val <= scaleMax) {
+              splits.push(val);
+              val += customIncr;
+            }
+            return splits;
           }
         },
         {
@@ -200,10 +214,11 @@
           time: false,
           auto: true,
           range: (u: any, dataMin: number, dataMax: number) => {
-            // 固定显示最新20个数据点的时间窗口
+            // 固定显示最新20个数据点的时间窗口，增大时间跨度使滚动更慢
             if (data.length > 20) {
               const latestTime = dataMax;
-              const windowSize = data.length > 1 ? (data[data.length - 1][0] - data[Math.max(0, data.length - 20)][0]) : 10;
+              // 增大窗口大小，使X轴跨度更大
+              const windowSize = data.length > 1 ? (data[data.length - 1][0] - data[Math.max(0, data.length - 20)][0]) * 1.5 : 15;
               return [latestTime - windowSize, latestTime];
             }
             return [dataMin, dataMax];
@@ -228,11 +243,11 @@
               // 显示tooltip
               showTooltip = true;
               
-              // 计算tooltip位置（鼠标右下方）
+              // 计算tooltip位置（小框的左上方为鼠标位置）
               const rect = chartContainer.getBoundingClientRect();
               tooltipPosition = {
-                x: left + 15, // 鼠标右侧15px
-                y: top + 15   // 鼠标下方15px
+                x: left, // 鼠标X位置作为小框左上角
+                y: top   // 鼠标Y位置作为小框左上角
               };
               
               // 构建tooltip数据
@@ -301,7 +316,8 @@
         // 如果数据超过20个点，自动滚动到最新数据
         if (data.length > 20) {
           const latestTime = data[data.length - 1][0];
-          const windowSize = data[data.length - 1][0] - data[Math.max(0, data.length - 20)][0];
+          // 增大窗口大小，使滚动更慢
+          const windowSize = (data[data.length - 1][0] - data[Math.max(0, data.length - 20)][0]) * 1.5;
           
           // 平滑滚动到新位置
           setTimeout(() => {
@@ -309,9 +325,9 @@
               min: latestTime - windowSize,
               max: latestTime
             });
-          }, 100); // 额外延迟100ms实现更平滑的滚动
+          }, 150); // 增加延迟到150ms，使滚动更慢
         }
-      }, 50); // 延迟50ms更新，使动画更平滑
+      }, 100); // 增加延迟到100ms，使动画更平滑
       
       console.log(`图表 ${chartName} 数据更新成功，当前数据点: ${data.length}`);
     } catch (error) {
@@ -408,11 +424,11 @@
     {/if}
   </div>
 
-  <!-- 自定义Tooltip - 半透明小框，位置在鼠标右下方 -->
+  <!-- 自定义Tooltip - 半透明小框，位置在鼠标左上方，透明度70% -->
   {#if showTooltip}
     <div 
-      class="absolute z-50 bg-gray-800 bg-opacity-90 border border-gray-600 rounded-lg p-3 shadow-lg pointer-events-none"
-      style="left: {tooltipPosition.x}px; top: {tooltipPosition.y}px; backdrop-filter: blur(4px);"
+      class="absolute z-50 bg-gray-800 border border-gray-600 rounded-lg p-3 shadow-lg pointer-events-none"
+      style="left: {tooltipPosition.x}px; top: {tooltipPosition.y}px; background-color: rgba(31, 41, 55, 0.7); backdrop-filter: blur(4px);"
     >
       <!-- 时间显示 -->
       <div class="text-xs text-gray-300 font-mono mb-2 border-b border-gray-600 pb-1">
@@ -442,24 +458,5 @@
     </div>
   {/if}
 
-  <!-- 图表信息 -->
-  <div class="mt-2 flex justify-between items-center text-xs text-gray-400">
-    <div class="flex items-center gap-4">
-      <span>数据点: {data.length}</span>
-      <span>显示窗口: {Math.min(data.length, 20)} 点</span>
-      <span>曲线数: {curves.length}</span>
-    </div>
-    <div class="flex items-center gap-2">
-      {#if data.length > 0}
-        <span>最新时间: {data[data.length - 1]?.[0]?.toFixed(3)}s</span>
-      {/if}
-      {#if uplot}
-        <div class="w-2 h-2 bg-green-500 rounded-full" title="图表已就绪"></div>
-      {:else if isLoading}
-        <div class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" title="加载中"></div>
-      {:else if loadError}
-        <div class="w-2 h-2 bg-red-500 rounded-full" title="加载失败"></div>
-      {/if}
-    </div>
-  </div>
+  <!-- 删除图表信息栏（数据点、显示窗口、曲线数等信息） -->
 </div>

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { invoke } from '@tauri-apps/api/tauri';
   import CurveChartManager from './CurveChartManager.svelte';
   import RealTimeMonitor from './RealTimeMonitor.svelte';
   import UPlotChart from './UPlotChart.svelte';
@@ -123,6 +122,25 @@
   // 实时监控表格数据
   let monitorTableData = $state<Array<{parameter: string, value: string}>>([]);
 
+  // 检查是否在Tauri环境中 - 修复环境检测
+  function isTauriEnvironment(): boolean {
+    try {
+      // 检查多个Tauri特征
+      return !!(
+        typeof window !== 'undefined' && 
+        (
+          window.__TAURI__ || 
+          window.__TAURI_IPC__ ||
+          (window as any).__TAURI_METADATA__ ||
+          navigator.userAgent.includes('Tauri')
+        )
+      );
+    } catch (error) {
+      console.log('Tauri环境检测失败:', error);
+      return false;
+    }
+  }
+
   // 辅助函数：获取指定图表的数据 (data_chart_1, data_chart_2, etc.)
   function getDataChart(chartId: number) {
     return chartDataSets.get(chartId);
@@ -209,7 +227,7 @@
     updateDataInValue("油门杆角度", throttleValue);
   }
 
-  // 调用后端实时计算函数
+  // 调用后端实时计算函数 - 修复Tauri调用
   async function callRealtimeCalculation() {
     try {
       const data = {
@@ -219,11 +237,17 @@
       
       console.log('调用后端实时计算，发送数据:', data);
       
-      // 使用 Tauri invoke 调用后端的 real_calculation 函数
-      const result = await invoke("real_calculation", data);
-      console.log('后端返回结果:', result);
-      
-      return result;
+      // 检查是否在Tauri环境中
+      if (isTauriEnvironment()) {
+        // 动态导入Tauri API
+        const { invoke } = await import('@tauri-apps/api/tauri');
+        const result = await invoke("real_calculation", data);
+        console.log('后端返回结果:', result);
+        return result;
+      } else {
+        console.log('非Tauri环境，使用模拟数据');
+        return generateMockRealtimeData();
+      }
     } catch (error) {
       console.error('后端调用失败:', error);
       // 返回模拟数据作为fallback
@@ -613,7 +637,7 @@
         <div class="grid grid-cols-1 gap-6">
           {#each curveCharts as chart (chart.id)}
             <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-lg">
-              <!-- 图表标题 - 统一样式 -->
+              <!-- 图表标题 - 统一样式，删除数据点、显示窗口、曲线数信息 -->
               <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold text-gray-200 flex items-center gap-2">
                   <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -621,9 +645,7 @@
                   </svg>
                   {chart.name}
                 </h3>
-                <div class="text-sm text-gray-400">
-                  {chart.curves.length} 条曲线 | 数据点: {chartDataSets.get(chart.id)?.data.length || 0}
-                </div>
+                <!-- 删除右侧的数据统计信息 -->
               </div>
 
               <!-- uPlot图表容器 -->
@@ -905,24 +927,6 @@
             </div>
           </div>
         </div>
-
-        <!-- 调试信息区域 - 开发时可见 -->
-        {#if false}
-          <div class="p-4 border-t border-gray-700 bg-gray-900">
-            <h4 class="text-xs text-gray-400 mb-2">调试信息</h4>
-            <div class="space-y-1 text-xs text-gray-500">
-              <div>data_chart_1: {JSON.stringify(getDataChart(1), null, 2)}</div>
-              <div>data_chart_2: {JSON.stringify(getDataChart(2), null, 2)}</div>
-              <div>data_chart_3: {JSON.stringify(getDataChart(3), null, 2)}</div>
-            </div>
-            <button 
-              class="mt-2 px-2 py-1 bg-gray-600 hover:bg-gray-500 text-white text-xs rounded"
-              onclick={logAllDataCharts}
-            >
-              打印所有图表数据
-            </button>
-          </div>
-        {/if}
       </div>
     </div>
   </div>
