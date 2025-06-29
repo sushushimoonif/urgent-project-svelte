@@ -7,6 +7,7 @@
   let showResults = $state(false);
   let selectedFile = $state<File | null>(null);
   let csvData = $state<string[][]>([]);
+  let storagePath = $state('');
   let showMonitorModal = $state(false);
 
   // 模态框位置状态
@@ -18,6 +19,18 @@
 
   // 输出数据结构 - dataOut格式（后端返回）
   let dataOut = $state<Array<{name: string, data: number[]}>>([]);
+
+  // 仿真步长状态 - 只能选择一个
+  let selectedSimulationStep = $state('0.025');
+  
+  // 模式选择状态 - 只能选择一个
+  let selectedMode = $state('作战');
+  let selectedEnvironment = $state('地面');
+
+  // 油门杆角度控制
+  let throttleValue = $state(66.66);
+  let isDraggingThrottle = $state(false);
+  let throttleContainer: HTMLElement | null = null;
 
   // 曲线图数据 - 与实时计算相同的初始配置
   let curveCharts = $state([
@@ -88,34 +101,12 @@
     { name: '喷管出口速度', selected: false }
   ]);
 
-  // uPlot图表数据存储 - 每个图表一个数据集，data_chart_{curveCharts.id}格式
+  // uPlot图表数据存储 - 每个图表一个数据集，修改为20个数据点
   let chartDataSets = $state<Map<number, {name: string, data: number[][]}>>(new Map());
+  let currentTime = $state(0);
 
   // 实时监控表格数据
   let monitorTableData = $state<Array<{parameter: string, value: string}>>([]);
-
-  // 辅助函数：获取指定图表的数据 (data_chart_1, data_chart_2, etc.)
-  function getDataChart(chartId: number) {
-    return chartDataSets.get(chartId);
-  }
-
-  // 辅助函数：获取所有图表数据的快照（用于调试）
-  function getAllDataCharts() {
-    const result: Record<string, any> = {};
-    chartDataSets.forEach((data, id) => {
-      result[`data_chart_${id}`] = data;
-    });
-    return result;
-  }
-
-  // 辅助函数：打印当前所有图表数据（用于调试）
-  function logAllDataCharts() {
-    console.log('=== 当前所有图表数据 ===');
-    chartDataSets.forEach((data, id) => {
-      console.log(`data_chart_${id}:`, data);
-    });
-    console.log('========================');
-  }
 
   // 读取CSV文件内容
   function readCSVFile(file: File): Promise<string[][]> {
@@ -160,10 +151,6 @@
         csvData = transposedData;
         console.log('文件读取成功，转置后数据行数:', csvData.length);
         console.log('转置后数据预览:', csvData.slice(0, 3));
-        
-        // 自动转换为dataIn格式
-        dataIn = convertCSVToDataIn();
-        console.log('自动转换的dataIn:', dataIn);
         
       } catch (error) {
         console.error('文件读取错误:', error);
@@ -223,9 +210,6 @@
         return [...row, defaultValue];
       }
     });
-    
-    // 更新dataIn
-    dataIn = convertCSVToDataIn();
   }
 
   // 删除列并重新排序序列号
@@ -244,9 +228,6 @@
         return index.toString(); // 重新编号：1, 2, 3, 4...
       });
     }
-    
-    // 更新dataIn
-    dataIn = convertCSVToDataIn();
   }
 
   // 将CSV表格数据转换为dataIn格式
@@ -379,7 +360,7 @@
       },
       {
         name: "time",
-        data: Array.from({length: dataPointCount}, (_, i) => i * 0.025) // 固定时间步长
+        data: Array.from({length: dataPointCount}, (_, i) => i * parseFloat(selectedSimulationStep))
       }
     ];
     
@@ -387,14 +368,77 @@
     return mockDataOut;
   }
 
-  // 更新uPlot图表数据 - 核心数据转换逻辑：dataOut -> data_chart_{curveCharts.id}
+  // 更新dataIn中的值
+  function updateDataInValue(name: string, value: number) {
+    const param = dataIn.find(p => p.name === name);
+    if (param) {
+      param.data = [value];
+    }
+  }
+
+  // 获取dataIn中的值
+  function getDataInValue(name: string): number {
+    const param = dataIn.find(p => p.name === name);
+    return param ? param.data[0] : 0;
+  }
+
+  // 更新所有dataIn状态
+  function updateAllDataIn() {
+    updateDataInValue("仿真步长", parseFloat(selectedSimulationStep));
+    updateDataInValue("作战", selectedMode === '作战' ? 1 : 0);
+    updateDataInValue("训练", selectedMode === '训练' ? 1 : 0);
+    updateDataInValue("地面", selectedEnvironment === '地面' ? 1 : 0);
+    updateDataInValue("空中", selectedEnvironment === '空中' ? 1 : 0);
+    updateDataInValue("油门杆角度", throttleValue);
+  }
+
+  // 油门杆角度SVG控制器 - 修复交互功能
+  function handleThrottleMouseDown(event: MouseEvent) {
+    isDraggingThrottle = true;
+    throttleContainer = event.currentTarget as HTMLElement;
+    updateThrottleValue(event);
+    event.preventDefault();
+  }
+
+  function handleThrottleMouseMove(event: MouseEvent) {
+    if (!isDraggingThrottle || !throttleContainer) return;
+    updateThrottleValue(event);
+    event.preventDefault();
+  }
+
+  function handleThrottleMouseUp() {
+    isDraggingThrottle = false;
+    throttleContainer = null;
+  }
+
+  function updateThrottleValue(event: MouseEvent) {
+    if (!throttleContainer) return;
+    
+    const rect = throttleContainer.getBoundingClientRect();
+    const y = event.clientY - rect.top;
+    
+    // SVG高度为381，有效控制范围从4到376（对应120到0度）
+    const svgHeight = 381;
+    const minY = 4;
+    const maxY = 376;
+    const clampedY = Math.max(minY, Math.min(maxY, y));
+    
+    // 计算角度值：y=4对应120度，y=376对应0度
+    const percentage = (clampedY - minY) / (maxY - minY);
+    throttleValue = 120 - (percentage * 120);
+    
+    // 更新dataIn
+    updateDataInValue("油门杆角度", throttleValue);
+  }
+
+  // 更新uPlot图表数据
   function updateUPlotChartsFromDataOut(dataOutResult: Array<{name: string, data: number[]}>) {
     dataOut = dataOutResult;
     console.log('开始更新uPlot图表数据，dataOut:', dataOut);
     
     // 获取时间数据
     const timeData = dataOut.find(d => d.name === "time");
-    const timeValues = timeData ? timeData.data : Array.from({length: dataOut[0]?.data.length || 5}, (_, i) => i * 0.025);
+    const timeValues = timeData ? timeData.data : Array.from({length: dataOut[0]?.data.length || 5}, (_, i) => i * parseFloat(selectedSimulationStep));
     
     // 遍历curveCharts数组中的每个图表对象
     curveCharts.forEach(chart => {
@@ -424,7 +468,7 @@
       
       console.log(`图表 ${chart.name} 生成数据:`, chartDataPoints);
       
-      // 更新数据集 - 这里就是data_chart_{chart.id}的数据
+      // 更新数据集
       chartDataSets.set(chart.id, {
         name: chart.name,
         data: chartDataPoints
@@ -437,9 +481,6 @@
     // 触发响应式更新
     chartDataSets = new Map(chartDataSets);
     console.log('uPlot图表数据更新完成，当前chartDataSets:', chartDataSets);
-    
-    // 调试：打印所有图表数据
-    logAllDataCharts();
   }
 
   // 更新监控表格数据
@@ -479,6 +520,44 @@
     showMonitorModal = true;
   }
 
+  function handleDownload() {
+    if (!storagePath) {
+      alert('请输入存储路径');
+      return;
+    }
+    
+    // 将过渡态数据保存到指定路径
+    try {
+      const exportData = {
+        timestamp: new Date().toISOString(),
+        dataIn: dataIn,
+        dataOut: dataOut,
+        chartData: Array.from(chartDataSets.entries()).map(([id, data]) => ({
+          chartId: id,
+          chartName: curveCharts.find(c => c.id === id)?.name || `图表-${id}`,
+          data: data
+        }))
+      };
+      
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `transient_data_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      alert(`数据已下载到: ${storagePath}`);
+    } catch (error) {
+      console.error('数据下载失败:', error);
+      alert('数据下载失败');
+    }
+  }
+
   // 计算函数 - 实现dataIn和dataOut数据格式处理
   async function handleCalculate() {
     if (!selectedFile && csvData.length === 0) {
@@ -489,11 +568,9 @@
     isCalculating = true;
     
     try {
-      // 1. 确保dataIn已经是最新的CSV数据
-      if (csvData.length > 0) {
-        dataIn = convertCSVToDataIn();
-      }
-      console.log('最终的dataIn:', dataIn);
+      // 1. 将CSV表格数据转换为dataIn格式
+      dataIn = convertCSVToDataIn();
+      console.log('转换后的dataIn:', dataIn);
       
       // 验证dataIn格式
       if (dataIn.length === 0) {
@@ -516,7 +593,7 @@
         if (validDataOut.length > 0) {
           console.log('有效的dataOut数据:', validDataOut);
           
-          // 4. 根据dataOut更新图表数据 - 转换为data_chart_{curveCharts.id}格式
+          // 4. 根据dataOut更新图表数据
           updateUPlotChartsFromDataOut(validDataOut);
           updateMonitorTableData(validDataOut);
         } else {
@@ -539,10 +616,6 @@
       });
       
       console.log('过渡态计算完成');
-      console.log('数据流程验证：');
-      console.log('1. dataIn:', dataIn);
-      console.log('2. dataOut:', dataOut);
-      console.log('3. data_chart_*:', getAllDataCharts());
       
     } catch (error) {
       console.error('计算过程中出错:', error);
@@ -560,7 +633,21 @@
       }
     });
   });
+
+  // 监听选择变化，自动更新dataIn
+  $effect(() => {
+    updateAllDataIn();
+  });
 </script>
+
+<svelte:window 
+  onmousemove={(e) => {
+    handleThrottleMouseMove(e);
+  }} 
+  onmouseup={() => {
+    handleThrottleMouseUp();
+  }} 
+/>
 
 <div class="min-h-[calc(100vh-120px)] bg-gray-900 p-4 sm:p-6 lg:p-8">
   <div class="w-full max-w-[95%] mx-auto h-full">
@@ -700,9 +787,9 @@
         </div>
       </div>
     {:else}
-      <!-- 计算结果界面 - 删除右侧控制面板，只保留左侧曲线管理和中间图表 -->
-      <div class="w-full max-w-[95%] mx-auto h-full">
-        <div class="flex h-full gap-4">
+      <!-- 计算结果界面 - 复制实时计算页面的完整布局 -->
+      <div class="w-full max-w-[80%] mx-auto h-full">
+        <div class="flex flex-col xl:flex-row h-full gap-4">
           <!-- 左侧曲线组面板 - 使用封装的组件 -->
           <CurveChartManager 
             bind:charts={curveCharts}
@@ -711,74 +798,280 @@
             onChartsChange={handleChartsChange}
           />
 
-          <!-- 右侧图表区域 - 占据剩余空间 -->
-          <div class="flex-1 flex flex-col">
-            <!-- 顶部控制栏 -->
-            <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-4">
-              <div class="flex justify-between items-center">
-                <!-- 左侧：计算状态 -->
-                <div class="flex items-center gap-4">
-                  <div class="flex items-center gap-2">
-                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span class="text-sm text-gray-300">过渡态计算完成</span>
+          <!-- 中间图表区域 - 使用uPlot图表 -->
+          <div class="flex-1 p-4 overflow-y-auto">
+            <!-- 图表展示区域 - 使用Grid布局确保整齐划一 -->
+            <div class="grid grid-cols-1 gap-6">
+              {#each curveCharts as chart (chart.id)}
+                <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-lg">
+                  <!-- 图表标题 - 统一样式，删除数据点、显示窗口、曲线数信息 -->
+                  <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-200 flex items-center gap-2">
+                      <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                      </svg>
+                      {chart.name}
+                    </h3>
+                    <!-- 删除右侧的数据统计信息 -->
                   </div>
-                  <div class="text-xs text-gray-400">
-                    数据点数: {csvData.length > 0 ? csvData[0].length - 1 : 0}
-                  </div>
-                  <div class="text-xs text-gray-400">
-                    文件: {selectedFile?.name || '未知'}
+
+                  <!-- uPlot图表容器 -->
+                  <div class="bg-gray-900 rounded-lg p-4 border border-gray-600">
+                    <UPlotChart 
+                      chartId={chart.id}
+                      chartName={chart.name}
+                      curves={chart.curves}
+                      data={chartDataSets.get(chart.id)?.data || []}
+                    />
                   </div>
                 </div>
+              {/each}
+            </div>
+          </div>
+
+          <!-- 右侧控制面板 - 整体面板，中间竖线分隔 -->
+          <div class="w-full lg:w-80 bg-gray-800 border border-gray-700 rounded-lg flex flex-col">
+            <!-- 存储路径 -->
+            <div class="p-4 border-b border-gray-700">
+              <div class="flex items-center gap-2">
+                <label class="text-xs text-gray-300 flex-shrink-0">存储路径</label>
+                <input
+                  type="text"
+                  bind:value={storagePath}
+                  placeholder="输入存储路径"
+                  class="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                />
+                <button 
+                  class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs transition-colors flex-shrink-0"
+                  onclick={handleDownload}
+                >
+                  ⬇
+                </button>
+              </div>
+            </div>
+
+            <!-- 返回编辑按钮 -->
+            <div class="p-4 border-b border-gray-700">
+              <div class="flex gap-2">
+                <button
+                  class="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors"
+                  onclick={() => showResults = false}
+                >
+                  返回编辑
+                </button>
+                <button
+                  class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors"
+                  onclick={openMonitorModal}
+                >
+                  监控
+                </button>
+              </div>
+            </div>
+
+            <!-- 仿真步长、模式选择 -->
+            <div class="p-4 border-b border-gray-700">
+              <!-- 仿真步长按钮 - 单选 -->
+              <div class="mb-4">
+                <div class="flex gap-1 mb-3">
+                  <button 
+                    class="flex-1 px-2 py-1 rounded text-xs font-medium transition-colors {selectedSimulationStep === '0.025' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+                    onclick={() => selectedSimulationStep = '0.025'}
+                  >
+                    仿真步长<br>0.025秒
+                  </button>
+                  <button 
+                    class="flex-1 px-2 py-1 rounded text-xs font-medium transition-colors {selectedSimulationStep === '0.125' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+                    onclick={() => selectedSimulationStep = '0.125'}
+                  >
+                    仿真步长<br>0.125秒
+                  </button>
+                </div>
                 
-                <!-- 右侧：控制按钮 -->
-                <div class="flex items-center gap-2">
-                  <button
-                    class="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded transition-colors"
-                    onclick={() => showResults = false}
+                <!-- 作战/训练模式选择按钮 - 单选 -->
+                <div class="flex gap-1 mb-3">
+                  <button 
+                    class="flex-1 px-2 py-1 rounded text-xs font-medium transition-colors {selectedMode === '作战' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+                    onclick={() => selectedMode = '作战'}
                   >
-                    返回编辑
+                    作战
                   </button>
-                  <button
-                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors"
-                    onclick={openMonitorModal}
+                  <button 
+                    class="flex-1 px-2 py-1 rounded text-xs font-medium transition-colors {selectedMode === '训练' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+                    onclick={() => selectedMode = '训练'}
                   >
-                    监控
+                    训练
                   </button>
-                  <div class="text-xs text-gray-500">
-                    {new Date().toLocaleTimeString()}
-                  </div>
+                </div>
+                
+                <!-- 地面/空中环境选择按钮 - 单选 -->
+                <div class="flex gap-1">
+                  <button 
+                    class="flex-1 px-2 py-1 rounded text-xs font-medium transition-colors {selectedEnvironment === '地面' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+                    onclick={() => selectedEnvironment = '地面'}
+                  >
+                    地面
+                  </button>
+                  <button 
+                    class="flex-1 px-2 py-1 rounded text-xs font-medium transition-colors {selectedEnvironment === '空中' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+                    onclick={() => selectedEnvironment = '空中'}
+                  >
+                    空中
+                  </button>
                 </div>
               </div>
             </div>
 
-            <!-- 图表显示区域 -->
-            <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg p-4 overflow-y-auto">
-              <!-- 图表展示区域 - 使用Grid布局确保整齐划一 -->
-              <div class="grid grid-cols-1 gap-6">
-                {#each curveCharts as chart (chart.id)}
-                  <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-lg">
-                    <!-- 图表标题 - 统一样式，删除数据点、显示窗口、曲线数信息 -->
-                    <div class="flex justify-between items-center mb-4">
-                      <h3 class="text-lg font-semibold text-gray-200 flex items-center gap-2">
-                        <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                        </svg>
-                        {chart.name}
-                      </h3>
-                      <!-- 删除右侧的数据统计信息 -->
+            <!-- 油门杆角度和输入参数 - 增加高度，修复显示问题 -->
+            <div class="p-4 flex-1 overflow-visible">
+              <div class="flex items-start gap-4 h-full">
+                <!-- 左侧：油门杆角度SVG控制器 - 修复交互 -->
+                <div class="flex-shrink-0">
+                  <h3 class="text-xs text-gray-300 mb-3">油门杆角度</h3>
+                  <div class="relative">
+                    <!-- SVG油门杆控制器容器 - 添加容器引用 -->
+                    <div 
+                      class="cursor-pointer select-none {isDraggingThrottle ? 'cursor-grabbing' : 'cursor-grab'}"
+                      onmousedown={handleThrottleMouseDown}
+                      style="width: 50px; height: 381px;"
+                      bind:this={throttleContainer}
+                    >
+                      <!-- SVG背景 - 基于Frame3183.svg -->
+                      <svg width="50" height="381" viewBox="0 0 50 381" fill="none" xmlns="http://www.w3.org/2000/svg" class="absolute inset-0">
+                        <!-- 刻度数字 -->
+                        <text x="-1" y="9" fill="white" fill-opacity="0.7" font-size="12">120</text>
+                        <text x="-1" y="70" fill="white" fill-opacity="0.7" font-size="12">100</text>
+                        <text x="3" y="132" fill="white" fill-opacity="0.7" font-size="12">80</text>
+                        <text x="3" y="194" fill="white" fill-opacity="0.7" font-size="12">60</text>
+                        <text x="3" y="256" fill="white" fill-opacity="0.7" font-size="12">40</text>
+                        <text x="3" y="318" fill="white" fill-opacity="0.7" font-size="12">20</text>
+                        <text x="8" y="380" fill="white" fill-opacity="0.7" font-size="12">0</text>
+                        
+                        <!-- 主刻度线 -->
+                        <line x1="22.5" y1="4" x2="32.5" y2="4" stroke="white" stroke-opacity="0.7"/>
+                        <line x1="22.5" y1="66" x2="32.5" y2="66" stroke="white" stroke-opacity="0.7"/>
+                        <line x1="22.5" y1="128" x2="32.5" y2="128" stroke="white" stroke-opacity="0.7"/>
+                        <line x1="22.5" y1="190" x2="32.5" y2="190" stroke="white" stroke-opacity="0.7"/>
+                        <line x1="22.5" y1="252" x2="32.5" y2="252" stroke="white" stroke-opacity="0.7"/>
+                        <line x1="22.5" y1="314" x2="32.5" y2="314" stroke="white" stroke-opacity="0.7"/>
+                        <line x1="22.5" y1="376" x2="32.5" y2="376" stroke="white" stroke-opacity="0.7"/>
+                        
+                        <!-- 小刻度线 -->
+                        {#each Array(30) as _, i}
+                          {@const y = 4 + i * 12.4}
+                          {#if y <= 376 && (y - 4) % 62 !== 0}
+                            <line x1="22.5" y1={y} x2="27.5" y2={y} stroke="white" stroke-opacity="0.7" stroke-width="0.5"/>
+                          {/if}
+                        {/each}
+                        
+                        <!-- 滑轨背景 -->
+                        <rect x="37.5" y="2.5" width="3" height="376" rx="1.5" fill="#141414"/>
+                      </svg>
+                      
+                      <!-- 可拖动的蓝色滑块 -->
+                      {#each [throttleValue] as value}
+                        {@const percentage = (120 - value) / 120}
+                        {@const sliderY = 4 + percentage * 372}
+                        <div class="absolute pointer-events-none" style="top: {sliderY - 5.5}px; left: 36.5px;">
+                          <!-- 滑块主体 -->
+                          <div class="w-1 h-3 bg-blue-500 rounded-sm"></div>
+                          <!-- 滑块手柄 -->
+                          <div class="absolute -left-2.5 top-0.5 w-6 h-2 bg-gray-800 border border-blue-500 rounded-sm flex items-center justify-center">
+                            <div class="w-3 h-0.5 bg-blue-500 rounded"></div>
+                          </div>
+                        </div>
+                      {/each}
                     </div>
-
-                    <!-- uPlot图表容器 -->
-                    <div class="bg-gray-900 rounded-lg p-4 border border-gray-600">
-                      <UPlotChart 
-                        chartId={chart.id}
-                        chartName={chart.name}
-                        curves={chart.curves}
-                        data={chartDataSets.get(chart.id)?.data || []}
-                      />
+                    
+                    <!-- 当前值显示 -->
+                    <div class="text-center mt-2">
+                      <span class="text-xs text-white font-mono">{throttleValue.toFixed(2)}°</span>
                     </div>
                   </div>
-                {/each}
+                </div>
+
+                <!-- 竖线分隔 -->
+                <div class="w-px bg-gray-600 h-full"></div>
+
+                <!-- 右侧：输入参数 - 上下布局 -->
+                <div class="flex-1 space-y-3 min-w-0">
+                  <!-- 高度(0~22000) -->
+                  <div class="space-y-1">
+                    <label class="text-xs text-gray-300 block">高度(0~22000)</label>
+                    <div class="relative">
+                      <input
+                        type="text"
+                        value={getDataInValue("高度")}
+                        oninput={(e) => updateDataInValue("高度", parseFloat(e.target.value) || 0)}
+                        class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent pr-6"
+                      />
+                      <span class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs">m</span>
+                    </div>
+                  </div>
+
+                  <!-- 马赫数(0~2.5) -->
+                  <div class="space-y-1">
+                    <label class="text-xs text-gray-300 block">马赫数(0~2.5)</label>
+                    <input
+                      type="text"
+                      value={getDataInValue("马赫数")}
+                      oninput={(e) => updateDataInValue("马赫数", parseFloat(e.target.value) || 0)}
+                      class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <!-- 温度修正(≥0) -->
+                  <div class="space-y-1">
+                    <label class="text-xs text-gray-300 block">温度修正(≥0)</label>
+                    <div class="relative">
+                      <input
+                        type="text"
+                        value={getDataInValue("温度修正")}
+                        oninput={(e) => updateDataInValue("温度修正", parseFloat(e.target.value) || 0)}
+                        class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent pr-6"
+                      />
+                      <span class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs">K</span>
+                    </div>
+                  </div>
+
+                  <!-- 进气道总压恢复系数(0~1.1) -->
+                  <div class="space-y-1">
+                    <label class="text-xs text-gray-300 block">进气道总压恢复系数(0~1.1)</label>
+                    <input
+                      type="text"
+                      value={getDataInValue("进气道总压恢复系数")}
+                      oninput={(e) => updateDataInValue("进气道总压恢复系数", parseFloat(e.target.value) || -1)}
+                      class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <!-- 功率提取(0~1000000) -->
+                  <div class="space-y-1">
+                    <label class="text-xs text-gray-300 block">功率提取(0~1000000)</label>
+                    <div class="relative">
+                      <input
+                        type="text"
+                        value={getDataInValue("功率提取")}
+                        oninput={(e) => updateDataInValue("功率提取", parseFloat(e.target.value) || 0)}
+                        class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent pr-6"
+                      />
+                      <span class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs">W</span>
+                    </div>
+                  </div>
+
+                  <!-- 压气机出口座舱引气(0~2) -->
+                  <div class="space-y-1">
+                    <label class="text-xs text-gray-300 block">压气机出口座舱引气(0~2)</label>
+                    <div class="relative">
+                      <input
+                        type="text"
+                        value={getDataInValue("压气机出口座舱引气")}
+                        oninput={(e) => updateDataInValue("压气机出口座舱引气", parseFloat(e.target.value) || 0)}
+                        class="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent pr-8"
+                      />
+                      <span class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs">%</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
