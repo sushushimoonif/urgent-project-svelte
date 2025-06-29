@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { invoke } from '@tauri-apps/api/tauri';
   import CurveChartManager from './CurveChartManager.svelte';
   import ChartDisplay from './ChartDisplay.svelte';
 
@@ -7,6 +6,12 @@
   let showResults = $state(false);
   let selectedFile = $state<File | null>(null);
   let csvData = $state<string[][]>([]);
+
+  // 输入数据结构 - dataIn格式（从CSV表格数据转换而来）
+  let dataIn = $state<Array<{name: string, data: number[]}>>([]);
+
+  // 输出数据结构 - dataOut格式（后端返回）
+  let dataOut = $state<Array<{name: string, data: number[]}>>([]);
 
   // 曲线图数据 - 与实时计算相同的初始配置
   let curveCharts = $state([
@@ -201,76 +206,134 @@
     }
   }
 
-  // 将表格数据转换为JSON格式
-  function convertTableToJSON() {
+  // 将CSV表格数据转换为dataIn格式
+  function convertCSVToDataIn(): Array<{name: string, data: number[]}> {
     if (csvData.length === 0) return [];
     
-    const result = [];
-    const numColumns = csvData[0].length;
+    const result: Array<{name: string, data: number[]}> = [];
     
-    // 遍历每一列（除了第一列参数名）
-    for (let colIndex = 1; colIndex < numColumns; colIndex++) {
-      const columnData: Record<string, string> = {};
+    // 遍历每一行（除了第一行序列号）
+    for (let rowIndex = 1; rowIndex < csvData.length; rowIndex++) {
+      const row = csvData[rowIndex];
+      const parameterName = row[0]; // 参数名
       
-      // 遍历每一行，构建该列的数据对象
-      for (let rowIndex = 1; rowIndex < csvData.length; rowIndex++) {
-        const parameterName = csvData[rowIndex][0]; // 参数名
-        const value = csvData[rowIndex][colIndex] || '0'; // 该列的值
-        columnData[parameterName] = value;
+      // 提取该行的所有数据（除了第一列参数名）
+      const data: number[] = [];
+      for (let colIndex = 1; colIndex < row.length; colIndex++) {
+        const value = parseFloat(row[colIndex]) || 0;
+        data.push(value);
       }
       
-      result.push(columnData);
+      result.push({
+        name: parameterName,
+        data: data
+      });
     }
     
+    console.log('转换后的dataIn格式:', result);
     return result;
   }
 
   // 检查是否在Tauri环境中运行
   function isTauriEnvironment(): boolean {
-    return typeof window !== 'undefined' && 
-           typeof window.__TAURI_IPC__ === 'function';
+    try {
+      // 检查多个Tauri特征
+      return !!(
+        typeof window !== 'undefined' && 
+        (
+          window.__TAURI__ || 
+          window.__TAURI_IPC__ ||
+          (window as any).__TAURI_METADATA__ ||
+          navigator.userAgent.includes('Tauri')
+        )
+      );
+    } catch (error) {
+      console.log('Tauri环境检测失败:', error);
+      return false;
+    }
   }
 
   // 调用后端计算函数
-  async function callTransientCalculation(data: any[]) {
+  async function callTransientCalculation(dataInParam: Array<{name: string, data: number[]}>) {
     try {
+      const requestData = {
+        dataIN: dataInParam,
+        type: "过渡态计算"
+      };
+      
+      console.log('发送到后端的数据:', requestData);
+      
       // 检查是否在Tauri环境中
       if (isTauriEnvironment()) {
-        // 使用 Tauri invoke 调用后端的 transient_calculation 函数
-        const result = await invoke("transient_calculation", { data });
+        // 动态导入Tauri API
+        const { invoke } = await import('@tauri-apps/api/tauri');
+        const result = await invoke("transient_calculation", requestData);
+        console.log('后端返回结果:', result);
         return result;
       } else {
-        // 在浏览器环境中返回模拟结果
-        console.log('运行在浏览器环境中，返回模拟计算结果');
-        return generateMockTransientData(data.length);
+        console.log('非Tauri环境，使用模拟数据');
+        return generateMockTransientData(dataInParam);
       }
     } catch (error) {
       console.error('计算调用失败:', error);
       // 如果Tauri调用失败，也返回模拟结果作为后备
-      return generateMockTransientData(data.length);
+      return generateMockTransientData(dataInParam);
     }
   }
 
-  // 生成模拟过渡态数据
-  function generateMockTransientData(dataPoints: number) {
-    const mockData = [];
+  // 生成模拟过渡态数据 - dataOut格式
+  function generateMockTransientData(dataInParam: Array<{name: string, data: number[]}>): Array<{name: string, data: number[]}> {
+    console.log('生成模拟过渡态数据，基于dataIn:', dataInParam);
     
-    for (let i = 0; i < dataPoints; i++) {
-      mockData.push({
+    // 获取数据点数量（基于dataIn中第一个参数的数据长度）
+    const dataPointCount = dataInParam.length > 0 ? dataInParam[0].data.length : 5;
+    
+    // 生成模拟的dataOut数据
+    const mockDataOut: Array<{name: string, data: number[]}> = [
+      {
         name: "高压涡轮出口总压",
-        data: [10 + Math.random() * 5 + i * 0.1]
-      });
-      mockData.push({
-        name: "高压压气机出口总压", 
-        data: [15 + Math.random() * 3 + i * 0.05]
-      });
-      mockData.push({
+        data: Array.from({length: dataPointCount}, (_, i) => 1120 + Math.sin(i * 0.5) * 100 + Math.random() * 50)
+      },
+      {
+        name: "低压涡轮出口温度",
+        data: Array.from({length: dataPointCount}, (_, i) => 700 + Math.cos(i * 0.3) * 80 + Math.random() * 40)
+      },
+      {
+        name: "高压压气机出口总压",
+        data: Array.from({length: dataPointCount}, (_, i) => 1245 + Math.sin(i * 0.4) * 120 + Math.random() * 60)
+      },
+      {
         name: "低压涡轮出口总压",
-        data: [8 + Math.random() * 4 + i * 0.08]
-      });
-    }
+        data: Array.from({length: dataPointCount}, (_, i) => 756 + Math.cos(i * 0.6) * 90 + Math.random() * 45)
+      },
+      {
+        name: "风扇出口总压",
+        data: Array.from({length: dataPointCount}, (_, i) => 245 + Math.sin(i * 0.2) * 30 + Math.random() * 20)
+      },
+      {
+        name: "高压压气机出口温度",
+        data: Array.from({length: dataPointCount}, (_, i) => 1245 + Math.cos(i * 0.35) * 150 + Math.random() * 75)
+      },
+      {
+        name: "高压涡轮进口温度",
+        data: Array.from({length: dataPointCount}, (_, i) => 1156 + Math.sin(i * 0.45) * 100 + Math.random() * 50)
+      },
+      {
+        name: "低压涡轮进口温度",
+        data: Array.from({length: dataPointCount}, (_, i) => 945 + Math.cos(i * 0.25) * 80 + Math.random() * 40)
+      },
+      {
+        name: "发动机净马力",
+        data: Array.from({length: dataPointCount}, (_, i) => 1200 + Math.sin(i * 0.3) * 200 + Math.random() * 100)
+      },
+      {
+        name: "发动机总马力",
+        data: Array.from({length: dataPointCount}, (_, i) => 1400 + Math.cos(i * 0.4) * 150 + Math.random() * 75)
+      }
+    ];
     
-    return mockData;
+    console.log('生成的模拟dataOut:', mockDataOut);
+    return mockDataOut;
   }
 
   // 初始化图表数据
@@ -279,32 +342,48 @@
     chartData.set(chartId, data);
   }
 
-  // 根据计算结果更新图表数据
-  function updateChartsFromCalculationData(calculationData: any[]) {
-    // 模拟过渡态数据：根据CSV数据列数生成时间序列数据
-    const numDataPoints = csvData.length > 0 ? csvData[0].length - 1 : 10; // 减1是因为第一列是参数名
+  // 根据dataOut更新图表数据
+  function updateChartsFromDataOut(dataOutResult: Array<{name: string, data: number[]}>) {
+    dataOut = dataOutResult;
+    console.log('开始更新图表数据，dataOut:', dataOut);
+    
+    // 获取数据点数量
+    const dataPointCount = dataOut.length > 0 ? dataOut[0].data.length : 0;
     
     curveCharts.forEach(chart => {
-      const data: Array<{time: number, values: number[]}> = [];
+      console.log(`处理图表 ${chart.name}，曲线:`, chart.curves.map(c => c.name));
+      
+      const chartDataPoints: Array<{time: number, values: number[]}> = [];
       
       // 为每个时间点生成数据
-      for (let timeIndex = 0; timeIndex < numDataPoints; timeIndex++) {
+      for (let timeIndex = 0; timeIndex < dataPointCount; timeIndex++) {
         const values: number[] = [];
         
-        // 为每条曲线生成数值
+        // 为每条曲线提取对应时间点的数据
         chart.curves.forEach((curve, curveIndex) => {
-          // 基于时间和曲线索引生成模拟数据
-          const baseValue = 10 + curveIndex * 5;
-          const timeVariation = Math.sin(timeIndex * 0.5) * 3;
-          const randomVariation = (Math.random() - 0.5) * 2;
-          values.push(baseValue + timeVariation + randomVariation);
+          const curveData = dataOut.find(d => d.name === curve.name);
+          if (curveData && curveData.data[timeIndex] !== undefined) {
+            values.push(curveData.data[timeIndex]);
+          } else {
+            // 如果没有找到数据，使用默认值
+            values.push(10 + curveIndex * 5 + Math.random() * 2);
+            console.log(`曲线 ${curve.name} 在时间点 ${timeIndex} 没有数据，使用默认值`);
+          }
         });
         
-        data.push({ time: timeIndex, values });
+        chartDataPoints.push({
+          time: timeIndex, // 使用索引作为时间
+          values: values
+        });
       }
       
-      chartData.set(chart.id, data);
+      chartData.set(chart.id, chartDataPoints);
+      console.log(`图表 ${chart.name} 生成了 ${chartDataPoints.length} 个数据点`);
     });
+    
+    // 触发响应式更新
+    chartData = new Map(chartData);
+    console.log('图表数据更新完成，当前chartData:', chartData);
   }
 
   // 处理曲线图变化
@@ -318,7 +397,7 @@
     });
   }
 
-  // 计算函数 - 移除成功弹窗
+  // 计算函数 - 实现dataIn和dataOut数据格式处理
   async function handleCalculate() {
     if (!selectedFile && csvData.length === 0) {
       alert('请先选择文件');
@@ -328,18 +407,39 @@
     isCalculating = true;
     
     try {
-      // 将表格数据转换为JSON格式
-      const jsonData = convertTableToJSON();
-      console.log('发送到后端的数据:', jsonData);
+      // 1. 将CSV表格数据转换为dataIn格式
+      dataIn = convertCSVToDataIn();
+      console.log('转换后的dataIn:', dataIn);
       
-      // 验证数据格式
-      if (jsonData.length === 0) {
-        throw new Error('没有有效的数据列');
+      // 验证dataIn格式
+      if (dataIn.length === 0) {
+        throw new Error('没有有效的输入数据');
       }
 
-      // 调用后端计算函数
-      const result = await callTransientCalculation(jsonData);
+      // 2. 调用后端计算函数，传入dataIn
+      const result = await callTransientCalculation(dataIn);
       console.log('计算返回结果:', result);
+      
+      // 3. 验证后端返回的dataOut格式
+      if (Array.isArray(result)) {
+        // 确保返回的数据符合dataOut格式
+        const validDataOut = result.filter(item => 
+          item && 
+          typeof item.name === 'string' && 
+          Array.isArray(item.data)
+        );
+        
+        if (validDataOut.length > 0) {
+          console.log('有效的dataOut数据:', validDataOut);
+          
+          // 4. 根据dataOut更新图表数据
+          updateChartsFromDataOut(validDataOut);
+        } else {
+          throw new Error('后端返回的数据格式不正确');
+        }
+      } else {
+        throw new Error('后端返回的数据不是数组格式');
+      }
       
       // 显示结果界面
       showResults = true;
@@ -351,10 +451,6 @@
         }
       });
       
-      // 根据计算结果更新图表数据
-      updateChartsFromCalculationData(result);
-      
-      // 移除计算完成弹窗 - 静默完成计算
       console.log('过渡态计算完成');
       
     } catch (error) {
@@ -405,7 +501,7 @@
             </div>
           </div>
 
-          <!-- 计算按钮 - 移除重置按钮 -->
+          <!-- 计算按钮 -->
           <div class="flex gap-2">
             <button
               class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -417,8 +513,26 @@
           </div>
         </div>
 
+        <!-- 数据预览区域 - 显示当前dataIn格式 -->
+        {#if dataIn.length > 0}
+          <div class="mb-6 bg-gray-800 border border-gray-700 rounded-lg p-4">
+            <h3 class="text-sm font-medium text-gray-200 mb-3 flex items-center gap-2">
+              <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              dataIn 数据预览 (共 {dataIn.length} 个参数)
+            </h3>
+            <div class="max-h-32 overflow-y-auto bg-gray-900 rounded p-3 text-xs font-mono">
+              <pre class="text-gray-300">{JSON.stringify(dataIn.slice(0, 3), null, 2)}</pre>
+              {#if dataIn.length > 3}
+                <div class="text-gray-500 mt-2">... 还有 {dataIn.length - 3} 个参数</div>
+              {/if}
+            </div>
+          </div>
+        {/if}
+
         <!-- 结果表格 -->
-        <div class="bg-gray-800 rounded border border-gray-700 overflow-hidden h-[calc(100%-100px)]">
+        <div class="bg-gray-800 rounded border border-gray-700 overflow-hidden h-[calc(100%-200px)]">
           {#if csvData.length > 0}
             <div class="overflow-auto h-full">
               <table class="w-full text-sm">
@@ -469,6 +583,10 @@
                           <input 
                             type="text" 
                             bind:value={csvData[rowIndex + 1][cellIndex + 1]}
+                            oninput={() => {
+                              // 实时更新dataIn
+                              dataIn = convertCSVToDataIn();
+                            }}
                             class="w-full bg-transparent text-center focus:bg-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1"
                           />
                         </td>
@@ -484,6 +602,7 @@
               <div class="text-center">
                 <div class="text-6xl mb-4">📂</div>
                 <p class="text-lg">选择CSV文件查看数据</p>
+                <p class="text-sm text-gray-500 mt-2">数据将自动转换为 dataIn 格式</p>
               </div>
             </div>
           {/if}
@@ -502,31 +621,61 @@
 
         <!-- 右侧图表区域 - 占据剩余空间 -->
         <div class="flex-1 flex flex-col">
-          <!-- 顶部控制栏 - 移除重置按钮 -->
+          <!-- 顶部控制栏 -->
           <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-4">
             <div class="flex justify-between items-center">
-              <!-- 左侧：计算状态 -->
+              <!-- 左侧：计算状态和数据格式信息 -->
               <div class="flex items-center gap-4">
                 <div class="flex items-center gap-2">
                   <div class="w-2 h-2 bg-green-500 rounded-full"></div>
                   <span class="text-sm text-gray-300">过渡态计算完成</span>
                 </div>
                 <div class="text-xs text-gray-400">
-                  数据点数: {csvData.length > 0 ? csvData[0].length - 1 : 0}
+                  输入参数: {dataIn.length} 个
+                </div>
+                <div class="text-xs text-gray-400">
+                  输出参数: {dataOut.length} 个
+                </div>
+                <div class="text-xs text-gray-400">
+                  数据点数: {dataOut.length > 0 ? dataOut[0].data.length : 0}
                 </div>
                 <div class="text-xs text-gray-400">
                   文件: {selectedFile?.name || '未知'}
                 </div>
               </div>
               
-              <!-- 右侧：移除所有控制按钮，只显示状态信息 -->
+              <!-- 右侧：返回按钮 -->
               <div class="flex items-center gap-2">
+                <button 
+                  class="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white text-sm rounded transition-colors"
+                  onclick={() => showResults = false}
+                >
+                  返回编辑
+                </button>
                 <div class="text-xs text-gray-500">
                   {new Date().toLocaleTimeString()}
                 </div>
               </div>
             </div>
           </div>
+
+          <!-- dataOut数据预览 -->
+          {#if dataOut.length > 0}
+            <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-4">
+              <h3 class="text-sm font-medium text-gray-200 mb-3 flex items-center gap-2">
+                <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+                dataOut 数据预览 (共 {dataOut.length} 个参数)
+              </h3>
+              <div class="max-h-32 overflow-y-auto bg-gray-900 rounded p-3 text-xs font-mono">
+                <pre class="text-gray-300">{JSON.stringify(dataOut.slice(0, 3), null, 2)}</pre>
+                {#if dataOut.length > 3}
+                  <div class="text-gray-500 mt-2">... 还有 {dataOut.length - 3} 个参数</div>
+                {/if}
+              </div>
+            </div>
+          {/if}
 
           <!-- 图表显示区域 -->
           <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg p-4 overflow-y-auto">
