@@ -17,6 +17,8 @@
   let chartContainer: HTMLDivElement;
   let uplot: any = null;
   let uPlot: any = null;
+  let isLoading = $state(true);
+  let loadError = $state(false);
 
   // 颜色配置
   const colors = [
@@ -33,25 +35,72 @@
     if (typeof window === 'undefined') return;
     
     try {
-      // 动态导入uPlot
-      const uPlotModule = await import('/lib/uPlot.iife.js');
-      uPlot = (window as any).uPlot;
+      isLoading = true;
+      loadError = false;
       
-      if (!uPlot) {
-        console.error('uPlot未能正确加载');
+      // 检查uPlot是否已经加载
+      if ((window as any).uPlot) {
+        uPlot = (window as any).uPlot;
+        console.log('uPlot库已存在');
+        initChart();
         return;
       }
       
-      console.log('uPlot库加载成功');
-      initChart();
+      // 动态创建script标签加载uPlot
+      const script = document.createElement('script');
+      script.src = '/lib/uPlot.iife.js';
+      script.onload = () => {
+        uPlot = (window as any).uPlot;
+        if (uPlot) {
+          console.log('uPlot库加载成功');
+          initChart();
+        } else {
+          console.error('uPlot库加载后未找到uPlot对象');
+          loadError = true;
+        }
+        isLoading = false;
+      };
+      script.onerror = () => {
+        console.error('uPlot库加载失败');
+        loadError = true;
+        isLoading = false;
+      };
+      
+      // 检查script是否已经存在
+      const existingScript = document.querySelector('script[src="/lib/uPlot.iife.js"]');
+      if (!existingScript) {
+        document.head.appendChild(script);
+      } else {
+        // 如果script已存在，等待加载完成
+        if ((window as any).uPlot) {
+          uPlot = (window as any).uPlot;
+          initChart();
+          isLoading = false;
+        } else {
+          existingScript.addEventListener('load', () => {
+            uPlot = (window as any).uPlot;
+            if (uPlot) {
+              initChart();
+            } else {
+              loadError = true;
+            }
+            isLoading = false;
+          });
+        }
+      }
     } catch (error) {
       console.error('uPlot库加载失败:', error);
+      loadError = true;
+      isLoading = false;
     }
   }
 
   // 初始化图表
   function initChart() {
-    if (!uPlot || !chartContainer) return;
+    if (!uPlot || !chartContainer) {
+      console.log('uPlot或容器未准备好');
+      return;
+    }
 
     // 清理现有图表
     if (uplot) {
@@ -188,10 +237,14 @@
 
     try {
       // 创建uPlot实例
-      uplot = new uPlot(opts, transformDataForUPlot(data), chartContainer);
-      console.log(`图表 ${chartName} 初始化成功`);
+      const transformedData = transformDataForUPlot(data);
+      uplot = new uPlot(opts, transformedData, chartContainer);
+      console.log(`图表 ${chartName} 初始化成功，数据点数: ${data.length}`);
+      isLoading = false;
     } catch (error) {
       console.error(`图表 ${chartName} 初始化失败:`, error);
+      loadError = true;
+      isLoading = false;
     }
   }
 
@@ -230,6 +283,8 @@
           max: latestTime
         });
       }
+      
+      console.log(`图表 ${chartName} 数据更新成功，当前数据点: ${data.length}`);
     } catch (error) {
       console.error(`图表 ${chartName} 数据更新失败:`, error);
     }
@@ -246,6 +301,7 @@
   $effect(() => {
     if (curves && uplot) {
       // 如果曲线配置发生变化，重新初始化图表
+      console.log(`图表 ${chartName} 曲线配置变化，重新初始化`);
       initChart();
     }
   });
@@ -261,6 +317,7 @@
   }
 
   onMount(() => {
+    console.log(`开始加载图表 ${chartName}`);
     loadUPlot();
     
     // 监听窗口大小变化
@@ -286,15 +343,37 @@
   <!-- 图表容器 -->
   <div 
     bind:this={chartContainer}
-    class="w-full h-80 bg-gray-900 rounded border border-gray-600"
+    class="w-full h-80 bg-gray-900 rounded border border-gray-600 relative"
     style="min-height: 300px;"
   >
-    {#if !uplot}
+    {#if isLoading}
       <!-- 加载状态 -->
-      <div class="flex items-center justify-center h-full text-gray-400">
+      <div class="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-900 rounded">
         <div class="text-center">
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
           <p class="text-sm">加载图表中...</p>
+        </div>
+      </div>
+    {:else if loadError}
+      <!-- 错误状态 -->
+      <div class="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-900 rounded">
+        <div class="text-center">
+          <div class="text-red-500 text-2xl mb-2">⚠️</div>
+          <p class="text-sm">图表加载失败</p>
+          <button 
+            class="mt-2 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded"
+            onclick={() => loadUPlot()}
+          >
+            重试
+          </button>
+        </div>
+      </div>
+    {:else if !uplot}
+      <!-- 等待初始化 -->
+      <div class="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-900 rounded">
+        <div class="text-center">
+          <div class="text-gray-500 text-2xl mb-2">📊</div>
+          <p class="text-sm">准备图表中...</p>
         </div>
       </div>
     {/if}
@@ -302,12 +381,21 @@
 
   <!-- 图表信息 -->
   <div class="mt-2 flex justify-between items-center text-xs text-gray-400">
-    <div>
-      数据点: {data.length} | 显示窗口: {Math.min(data.length, 100)} 点
+    <div class="flex items-center gap-4">
+      <span>数据点: {data.length}</span>
+      <span>显示窗口: {Math.min(data.length, 100)} 点</span>
+      <span>曲线数: {curves.length}</span>
     </div>
-    <div>
+    <div class="flex items-center gap-2">
       {#if data.length > 0}
-        最新时间: {data[data.length - 1]?.[0]?.toFixed(3)}s
+        <span>最新时间: {data[data.length - 1]?.[0]?.toFixed(3)}s</span>
+      {/if}
+      {#if uplot}
+        <div class="w-2 h-2 bg-green-500 rounded-full" title="图表已就绪"></div>
+      {:else if isLoading}
+        <div class="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" title="加载中"></div>
+      {:else if loadError}
+        <div class="w-2 h-2 bg-red-500 rounded-full" title="加载失败"></div>
       {/if}
     </div>
   </div>
