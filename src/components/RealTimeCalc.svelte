@@ -123,6 +123,29 @@
   // 实时监控表格数据
   let monitorTableData = $state<Array<{parameter: string, value: string}>>([]);
 
+  // 辅助函数：获取指定图表的数据 (data_chart_1, data_chart_2, etc.)
+  function getDataChart(chartId: number) {
+    return chartDataSets.get(chartId);
+  }
+
+  // 辅助函数：获取所有图表数据的快照（用于调试）
+  function getAllDataCharts() {
+    const result: Record<string, any> = {};
+    chartDataSets.forEach((data, id) => {
+      result[`data_chart_${id}`] = data;
+    });
+    return result;
+  }
+
+  // 辅助函数：打印当前所有图表数据（用于调试）
+  function logAllDataCharts() {
+    console.log('=== 当前所有图表数据 ===');
+    chartDataSets.forEach((data, id) => {
+      console.log(`data_chart_${id}:`, data);
+    });
+    console.log('========================');
+  }
+
   // 更新dataIn中的值
   function updateDataInValue(name: string, value: number) {
     const param = dataIn.find(p => p.name === name);
@@ -283,11 +306,17 @@
       
       // 更新数据集
       chartDataSets.set(chart.id, existingDataSet);
+      
+      // 调试输出：显示当前data_chart_{id}的内容
+      console.log(`data_chart_${chart.id} 当前状态:`, existingDataSet);
     });
     
     // 触发响应式更新
     chartDataSets = new Map(chartDataSets);
     console.log('uPlot图表数据更新完成，当前chartDataSets:', chartDataSets);
+    
+    // 调试：打印所有图表数据
+    logAllDataCharts();
   }
 
   // 更新监控表格数据
@@ -876,6 +905,24 @@
             </div>
           </div>
         </div>
+
+        <!-- 调试信息区域 - 开发时可见 -->
+        {#if false}
+          <div class="p-4 border-t border-gray-700 bg-gray-900">
+            <h4 class="text-xs text-gray-400 mb-2">调试信息</h4>
+            <div class="space-y-1 text-xs text-gray-500">
+              <div>data_chart_1: {JSON.stringify(getDataChart(1), null, 2)}</div>
+              <div>data_chart_2: {JSON.stringify(getDataChart(2), null, 2)}</div>
+              <div>data_chart_3: {JSON.stringify(getDataChart(3), null, 2)}</div>
+            </div>
+            <button 
+              class="mt-2 px-2 py-1 bg-gray-600 hover:bg-gray-500 text-white text-xs rounded"
+              onclick={logAllDataCharts}
+            >
+              打印所有图表数据
+            </button>
+          </div>
+        {/if}
       </div>
     </div>
   </div>
