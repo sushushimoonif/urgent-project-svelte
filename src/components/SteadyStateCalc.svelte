@@ -1,81 +1,81 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { invoke } from '@tauri-apps/api/tauri';
+  import { 
+    steadyStateStore, 
+    updateInputParameter, 
+    updateSelectionState, 
+    updateCalculationState, 
+    updateOutputResults,
+    getInputValue 
+  } from '../stores/steadyStateStore.ts';
 
-  let isCalculating = $state(false);
-  let showResults = $state(true); // 页面加载时立即显示结果
+  // 响应式状态 - 从store获取
+  let steadyState = $state();
+  
+  // 订阅store变化
+  $effect(() => {
+    const unsubscribe = steadyStateStore.subscribe(value => {
+      steadyState = value;
+    });
+    return unsubscribe;
+  });
 
-  // 输入参数数据结构 - 修改为新格式，包含作战/训练、地面/空中
-  let dataIN = $state([
-    { name: "仿真步长", data: [0.025] },
-    { name: "高度", data: [0.0] },
-    { name: "马赫数", data: [0.0] },
-    { name: "温度修正", data: [0.0] },
-    { name: "进气道总压恢复系数", data: [-1.0] },
-    { name: "功率提取", data: [0.0] },
-    { name: "压气机中间级引气", data: [0.0] },
-    { name: "油门杆角度", data: [66.0] },
-    { name: "作战", data: [0] },
-    { name: "训练", data: [1] },
-    { name: "地面", data: [0] },
-    { name: "空中", data: [1] }
-  ]);
-
-  // 参数名称映射 - 用于显示界面
-  const parameterLabels = {
-    "高度": { range: '(0~22000)', unit: 'm' },
-    "马赫数": { range: '(0~2.5)', unit: '' },
-    "温度修正": { range: '(0~xx)', unit: 'K' },
-    "进气道总压恢复系数": { range: '(-1或0~1.1)', unit: '' },
-    "功率提取": { range: '(0~1000000)', unit: 'W' },
-    "压气机中间级引气": { range: '(0~2)', unit: '%' },
-    "油门杆角度": { range: '(0~115)', unit: '度' }
+  // 参数配置 - 增强的参数信息
+  const parameterConfig = {
+    "高度": { 
+      range: '(0~22000)', 
+      unit: 'm',
+      description: '飞行高度，影响大气密度和温度',
+      validation: { min: 0, max: 22000 },
+      placeholder: '0'
+    },
+    "马赫数": { 
+      range: '(0~2.5)', 
+      unit: '',
+      description: '飞行马赫数，影响进气道性能',
+      validation: { min: 0, max: 2.5 },
+      placeholder: '0.0'
+    },
+    "温度修正": { 
+      range: '(≥0)', 
+      unit: 'K',
+      description: '大气温度修正值',
+      validation: { min: 0, max: 100 },
+      placeholder: '0'
+    },
+    "进气道总压恢复系数": { 
+      range: '(-1或0~1.1)', 
+      unit: '',
+      description: '进气道效率参数，-1表示自动计算',
+      validation: { min: -1, max: 1.1 },
+      placeholder: '-1'
+    },
+    "功率提取": { 
+      range: '(0~1000000)', 
+      unit: 'W',
+      description: '从发动机提取的功率',
+      validation: { min: 0, max: 1000000 },
+      placeholder: '0'
+    },
+    "压气机中间级引气": { 
+      range: '(0~2)', 
+      unit: '%',
+      description: '压气机引气百分比',
+      validation: { min: 0, max: 2 },
+      placeholder: '0'
+    },
+    "油门杆角度": { 
+      range: '(0~115)', 
+      unit: '度',
+      description: '油门杆位置角度',
+      validation: { min: 0, max: 115 },
+      placeholder: '66'
+    }
   };
 
-  // 仿真步长状态 - 只能选择一个
-  let selectedSimulationStep = $state('0.025');
-  
-  // 模式选择状态 - 只能选择一个
-  let selectedMode = $state('作战');
-  let selectedEnvironment = $state('地面');
-
-  // 输出参数 - 第一张表：仿真步长 + 15个虚拟数据，第二张表：16个虚拟数据
-  let dataOut = $state([
-    // 第一张表数据（仿真步长 + 15个虚拟数据）
-    { name: "仿真步长", data: ["0.025"] }, // 第1行：仿真步长 - 使用字符串保持原始格式
-    { name: "低压轴换算转速", data: [8542.30] },
-    { name: "高压轴换算转速", data: [12456.70] },
-    { name: "发动机进口换算流量/kg/s", data: [245.80] },
-    { name: "发动机净推力/kN", data: [15420.50] },
-    { name: "发动机总推力/kN", data: [16890.20] },
-    { name: "发动机进口冲压阻力/kN", data: [245.60] },
-    { name: "发动机总耗油量/kg/h", data: [3456.80] },
-    { name: "主燃烧室耗油量/kg/h", data: [2890.40] },
-    { name: "加力燃烧室耗油量/kg/h", data: [566.40] },
-    { name: "喷管喉道面积/m²", data: [0.245] },
-    { name: "喷管出口面积/m²", data: [0.312] },
-    { name: "风扇出口温度/K", data: [658.40] },
-    { name: "高压压气机出口温度/K", data: [1245.60] },
-    { name: "高压涡轮进口温度/K", data: [1156.80] },
-    { name: "低压涡轮进口温度/K", data: [945.20] },
-    
-    // 第二张表数据（16个虚拟数据）
-    { name: "低压涡轮出口温度/K", data: [756.30] },
-    { name: "风扇出口总压/kPa", data: [245.80] },
-    { name: "高压压气机出口总压/kPa", data: [1280.50] },
-    { name: "高压涡轮进口总压/kPa", data: [1120.30] },
-    { name: "低压涡轮进口总压/kPa", data: [890.70] },
-    { name: "低压涡轮出口总压/kPa", data: [156.40] },
-    { name: "喷管出口总压/kPa", data: [101.30] },
-    { name: "喷管出口速度/m/s", data: [1245.60] },
-    { name: "喷管出口马赫数", data: [2.15] },
-    { name: "推重比", data: [8.45] },
-    { name: "单位推力/N·s/kg", data: [1456.80] },
-    { name: "推进效率", data: [0.85] },
-    { name: "热效率", data: [0.42] },
-    { name: "总效率", data: [0.36] },
-    { name: "燃油消耗率/kg/(kN·h)", data: [0.78] },
-    { name: "比冲/s", data: [1890.50] }
-  ]);
+  // 输入验证状态
+  let validationErrors = $state<Record<string, string>>({});
 
   // 检查是否在 Tauri 环境中
   function isTauriEnvironment(): boolean {
@@ -83,73 +83,88 @@
            typeof window.__TAURI_IPC__ === 'function';
   }
 
+  // 验证输入值
+  function validateInput(paramName: string, value: number): string | null {
+    const config = parameterConfig[paramName];
+    if (!config) return null;
+
+    const { validation } = config;
+    
+    if (value < validation.min) {
+      return `值不能小于 ${validation.min}`;
+    }
+    
+    if (value > validation.max) {
+      return `值不能大于 ${validation.max}`;
+    }
+    
+    // 特殊验证：进气道总压恢复系数
+    if (paramName === "进气道总压恢复系数" && value !== -1 && (value < 0 || value > 1.1)) {
+      return '值必须为-1或在0~1.1范围内';
+    }
+    
+    return null;
+  }
+
   // 更新dataIN中的选项状态
   function updateDataINOptions() {
+    if (!steadyState) return;
+
     // 更新仿真步长
-    const stepParam = dataIN.find(p => p.name === "仿真步长");
-    if (stepParam) {
-      stepParam.data = [parseFloat(selectedSimulationStep)];
-    }
+    updateInputParameter("仿真步长", parseFloat(steadyState.selectedSimulationStep));
 
     // 更新作战/训练状态
-    const combatParam = dataIN.find(p => p.name === "作战");
-    const trainingParam = dataIN.find(p => p.name === "训练");
-    if (combatParam && trainingParam) {
-      if (selectedMode === '作战') {
-        combatParam.data = [0];
-        trainingParam.data = [1];
-      } else {
-        combatParam.data = [1];
-        trainingParam.data = [0];
-      }
+    if (steadyState.selectedMode === '作战') {
+      updateInputParameter("作战", 0);
+      updateInputParameter("训练", 1);
+    } else {
+      updateInputParameter("作战", 1);
+      updateInputParameter("训练", 0);
     }
 
     // 更新地面/空中状态
-    const groundParam = dataIN.find(p => p.name === "地面");
-    const airParam = dataIN.find(p => p.name === "空中");
-    if (groundParam && airParam) {
-      if (selectedEnvironment === '地面') {
-        groundParam.data = [0];
-        airParam.data = [1];
-      } else {
-        groundParam.data = [1];
-        airParam.data = [0];
-      }
+    if (steadyState.selectedEnvironment === '地面') {
+      updateInputParameter("地面", 0);
+      updateInputParameter("空中", 1);
+    } else {
+      updateInputParameter("地面", 1);
+      updateInputParameter("空中", 0);
     }
 
-    // 更新输出参数中的仿真步长（只有第一个参数）- 使用原始字符串值
-    if (dataOut.length > 0 && dataOut[0].name === "仿真步长") {
-      dataOut[0].data = [selectedSimulationStep]; // 直接使用字符串，不转换为数字
+    // 更新输出参数中的仿真步长
+    if (steadyState.dataOut.length > 0 && steadyState.dataOut[0].name === "仿真步长") {
+      const newDataOut = [...steadyState.dataOut];
+      newDataOut[0].data = [steadyState.selectedSimulationStep];
+      updateOutputResults(newDataOut);
     }
   }
 
-  // 生成虚拟数据 - 为除仿真步长外的所有参数生成随机数据
+  // 生成虚拟数据
   function generateVirtualData() {
-    dataOut.forEach((param, index) => {
+    if (!steadyState) return;
+
+    const newDataOut = steadyState.dataOut.map((param, index) => {
       if (index === 0) {
         // 第一个参数是仿真步长，使用用户选择的原始字符串值
-        param.data = [selectedSimulationStep];
+        return { ...param, data: [steadyState.selectedSimulationStep] };
       } else {
         // 其他参数生成虚拟数据，在原值基础上添加随机变化
         const baseValue = typeof param.data[0] === 'number' ? param.data[0] : 100;
         const variation = (Math.random() - 0.5) * 0.2; // ±10%的变化
-        param.data = [baseValue * (1 + variation)];
+        return { ...param, data: [baseValue * (1 + variation)] };
       }
     });
-    // 触发响应式更新
-    dataOut = [...dataOut];
+    
+    updateOutputResults(newDataOut);
   }
 
-  // 调用后端计算函数 - 添加环境检查
+  // 调用后端计算函数
   async function callSteadyStateCalculation(data: any) {
     try {
-      // 检查是否在 Tauri 环境中
       if (isTauriEnvironment()) {
-        // 在 Tauri 环境中，使用 invoke 调用后端
         const result = await invoke("transient_calculation", data);
         return result;
       } else {
-        // 在浏览器环境中，返回模拟成功结果
         console.log('运行在浏览器环境中，使用模拟数据');
         return {
           success: true,
@@ -159,7 +174,6 @@
       }
     } catch (error) {
       console.error('计算调用失败:', error);
-      // 如果调用失败，返回模拟结果作为后备
       return {
         success: false,
         message: '计算失败，返回模拟结果',
@@ -168,9 +182,27 @@
     }
   }
 
-  // 计算函数 - 按照指定格式传值给后端
+  // 计算函数
   async function handleCalculate() {
-    isCalculating = true;
+    if (!steadyState) return;
+
+    // 验证所有输入
+    const errors: Record<string, string> = {};
+    Object.keys(parameterConfig).forEach(paramName => {
+      const value = getInputValue(steadyState, paramName);
+      const error = validateInput(paramName, value);
+      if (error) {
+        errors[paramName] = error;
+      }
+    });
+
+    validationErrors = errors;
+    
+    if (Object.keys(errors).length > 0) {
+      return; // 有验证错误，不执行计算
+    }
+
+    updateCalculationState(true);
     
     try {
       // 更新dataIN中的选项状态
@@ -178,7 +210,7 @@
       
       // 构建传给后端的数据格式
       const data = {
-        dataIN: dataIN,
+        dataIN: steadyState.dataIN,
         type: "稳态计算"
       };
       
@@ -188,194 +220,326 @@
       const result = await callSteadyStateCalculation(data);
       console.log('计算返回结果:', result);
       
-      // 生成虚拟数据（包括更新仿真步长）
+      // 生成虚拟数据
       generateVirtualData();
       
-      console.log('虚拟数据已生成');
+      console.log('稳态计算完成');
       
     } catch (error) {
       console.error('计算过程中出错:', error);
-      // 出错时也生成虚拟数据
       generateVirtualData();
     } finally {
-      isCalculating = false;
+      updateCalculationState(false);
     }
   }
 
-  // 获取输入参数的显示值
-  function getInputValue(paramName: string): string {
-    const param = dataIN.find(p => p.name === paramName);
-    return param && param.data.length > 0 ? param.data[0].toString() : '0';
-  }
-
-  // 设置输入参数的值
-  function setInputValue(paramName: string, value: string) {
-    const param = dataIN.find(p => p.name === paramName);
-    if (param) {
-      const numValue = parseFloat(value) || 0;
-      param.data = [numValue];
+  // 处理输入值变化
+  function handleInputChange(paramName: string, value: string) {
+    const numValue = parseFloat(value) || 0;
+    
+    // 验证输入
+    const error = validateInput(paramName, numValue);
+    if (error) {
+      validationErrors = { ...validationErrors, [paramName]: error };
+    } else {
+      const { [paramName]: removed, ...rest } = validationErrors;
+      validationErrors = rest;
     }
+    
+    // 更新值
+    updateInputParameter(paramName, numValue);
   }
 
-  // 格式化显示值 - 仿真步长显示原始字符串，其他数值显示两位小数
+  // 格式化显示值
   function formatDisplayValue(param: any): string {
     if (param.name === "仿真步长") {
-      return param.data[0]; // 直接返回字符串，不格式化
+      return param.data[0];
     } else {
       const value = param.data[0];
       return typeof value === 'number' ? value.toFixed(2) : '0.00';
     }
   }
+
+  // 组件挂载时确保数据已加载
+  onMount(() => {
+    console.log('稳态计算组件已挂载，数据持久化已激活');
+  });
+
+  // 监听选择变化，自动更新dataIN
+  $effect(() => {
+    if (steadyState) {
+      updateDataINOptions();
+    }
+  });
 </script>
 
 <div class="h-[calc(100vh-120px)] bg-gray-900 p-4 sm:p-6 lg:p-8">
   <div class="w-full max-w-[95%] mx-auto h-full">
     <div class="flex h-full gap-4">
       <!-- 左侧输入面板 -->
-      <div class="w-80 bg-gray-800 border border-gray-700 rounded-lg p-4 flex flex-col">
-        <!-- 仿真步长、作战/训练、地面/空中按钮 -->
-        <div class="mb-4 space-y-2">
-          <!-- 仿真步长按钮 -->
-          <div class="flex">
-            <button 
-              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedSimulationStep === '0.025' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-              onclick={() => selectedSimulationStep = '0.025'}
-            >
-              仿真步长<br>0.025秒
-            </button>
-            <button 
-              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedSimulationStep === '0.0125' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-              onclick={() => selectedSimulationStep = '0.0125'}
-            >
-              仿真步长<br>0.0125秒
-            </button>
-          </div>
-          
-          <!-- 作战/训练 -->
-          <div class="flex">
-            <button 
-              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedMode === '作战' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-              onclick={() => selectedMode = '作战'}
-            >
-              作战
-            </button>
-            <button 
-              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedMode === '训练' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-              onclick={() => selectedMode = '训练'}
-            >
-              训练
-            </button>
-          </div>
-          
-          <!-- 地面/空中 -->
-          <div class="flex">
-            <button 
-              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedEnvironment === '地面' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-              onclick={() => selectedEnvironment = '地面'}
-            >
-              地面
-            </button>
-            <button 
-              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedEnvironment === '空中' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-              onclick={() => selectedEnvironment = '空中'}
-            >
-              空中
-            </button>
-          </div>
+      <div class="w-80 bg-gray-800 border border-gray-700 rounded-lg flex flex-col shadow-lg">
+        <!-- 面板标题 -->
+        <div class="bg-gray-750 px-4 py-3 border-b border-gray-700 rounded-t-lg">
+          <h2 class="text-lg font-semibold text-gray-200 flex items-center gap-2">
+            <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+            </svg>
+            稳态计算参数
+          </h2>
         </div>
 
-        <!-- 输入参数 -->
-        <div class="flex-1 space-y-3 overflow-y-auto">
-          {#each Object.entries(parameterLabels) as [paramName, config]}
-            <div class="flex items-center">
-              <label class="text-xs text-gray-300 flex-1">
-                {paramName}{config.range}
-              </label>
-              <div class="flex items-center gap-1">
-                <input
-                  type="text"
-                  value={getInputValue(paramName)}
-                  oninput={(e) => setInputValue(paramName, e.target.value)}
-                  class="w-24 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
-                />
-                <span class="text-gray-400 text-xs w-4">{config.unit}</span>
+        <div class="flex-1 p-4 overflow-y-auto">
+          <!-- 仿真步长、作战/训练、地面/空中按钮 -->
+          <div class="mb-6 space-y-3">
+            <div class="bg-gray-750 rounded-lg p-3 border border-gray-600">
+              <h3 class="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
+                <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                仿真步长
+              </h3>
+              <div class="grid grid-cols-2 gap-2">
+                <button 
+                  class="px-3 py-2 text-xs font-medium rounded transition-all duration-200 {steadyState?.selectedSimulationStep === '0.025' ? 'bg-purple-600 text-white shadow-lg' : 'bg-gray-600 text-gray-300 hover:bg-gray-500 hover:text-white'}"
+                  onclick={() => updateSelectionState({ selectedSimulationStep: '0.025' })}
+                >
+                  0.025秒
+                </button>
+                <button 
+                  class="px-3 py-2 text-xs font-medium rounded transition-all duration-200 {steadyState?.selectedSimulationStep === '0.0125' ? 'bg-purple-600 text-white shadow-lg' : 'bg-gray-600 text-gray-300 hover:bg-gray-500 hover:text-white'}"
+                  onclick={() => updateSelectionState({ selectedSimulationStep: '0.0125' })}
+                >
+                  0.0125秒
+                </button>
               </div>
             </div>
-          {/each}
+            
+            <div class="bg-gray-750 rounded-lg p-3 border border-gray-600">
+              <h3 class="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
+                <svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                </svg>
+                运行模式
+              </h3>
+              <div class="grid grid-cols-2 gap-2">
+                <button 
+                  class="px-3 py-2 text-xs font-medium rounded transition-all duration-200 {steadyState?.selectedMode === '作战' ? 'bg-purple-600 text-white shadow-lg' : 'bg-gray-600 text-gray-300 hover:bg-gray-500 hover:text-white'}"
+                  onclick={() => updateSelectionState({ selectedMode: '作战' })}
+                >
+                  作战
+                </button>
+                <button 
+                  class="px-3 py-2 text-xs font-medium rounded transition-all duration-200 {steadyState?.selectedMode === '训练' ? 'bg-purple-600 text-white shadow-lg' : 'bg-gray-600 text-gray-300 hover:bg-gray-500 hover:text-white'}"
+                  onclick={() => updateSelectionState({ selectedMode: '训练' })}
+                >
+                  训练
+                </button>
+              </div>
+            </div>
+            
+            <div class="bg-gray-750 rounded-lg p-3 border border-gray-600">
+              <h3 class="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
+                <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                飞行环境
+              </h3>
+              <div class="grid grid-cols-2 gap-2">
+                <button 
+                  class="px-3 py-2 text-xs font-medium rounded transition-all duration-200 {steadyState?.selectedEnvironment === '地面' ? 'bg-purple-600 text-white shadow-lg' : 'bg-gray-600 text-gray-300 hover:bg-gray-500 hover:text-white'}"
+                  onclick={() => updateSelectionState({ selectedEnvironment: '地面' })}
+                >
+                  地面
+                </button>
+                <button 
+                  class="px-3 py-2 text-xs font-medium rounded transition-all duration-200 {steadyState?.selectedEnvironment === '空中' ? 'bg-purple-600 text-white shadow-lg' : 'bg-gray-600 text-gray-300 hover:bg-gray-500 hover:text-white'}"
+                  onclick={() => updateSelectionState({ selectedEnvironment: '空中' })}
+                >
+                  空中
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 输入参数列表 -->
+          <div class="space-y-4">
+            <h3 class="text-sm font-medium text-gray-300 border-b border-gray-600 pb-2 flex items-center gap-2">
+              <svg class="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+              </svg>
+              输入参数
+            </h3>
+            
+            {#each Object.entries(parameterConfig) as [paramName, config]}
+              <div class="bg-gray-750 rounded-lg p-3 border border-gray-600 hover:border-gray-500 transition-colors">
+                <div class="space-y-2">
+                  <!-- 参数标签和范围 -->
+                  <div class="flex items-center justify-between">
+                    <label class="text-xs font-medium text-gray-300">
+                      {paramName}
+                    </label>
+                    <span class="text-xs text-gray-500">{config.range}</span>
+                  </div>
+                  
+                  <!-- 参数描述 -->
+                  <p class="text-xs text-gray-400 leading-relaxed">{config.description}</p>
+                  
+                  <!-- 输入框和单位 -->
+                  <div class="flex items-center gap-2">
+                    <div class="flex-1 relative">
+                      <input
+                        type="number"
+                        value={steadyState ? getInputValue(steadyState, paramName) : 0}
+                        oninput={(e) => handleInputChange(paramName, e.target.value)}
+                        placeholder={config.placeholder}
+                        step="any"
+                        class="w-full bg-gray-700 border rounded px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 transition-all duration-200 {
+                          validationErrors[paramName] 
+                            ? 'border-red-500 focus:ring-red-500' 
+                            : 'border-gray-600 focus:ring-purple-500 focus:border-transparent'
+                        }"
+                      />
+                      {#if config.unit}
+                        <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm pointer-events-none">
+                          {config.unit}
+                        </span>
+                      {/if}
+                    </div>
+                  </div>
+                  
+                  <!-- 验证错误提示 -->
+                  {#if validationErrors[paramName]}
+                    <div class="flex items-center gap-1 text-red-400 text-xs">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                      {validationErrors[paramName]}
+                    </div>
+                  {/if}
+                </div>
+              </div>
+            {/each}
+          </div>
         </div>
 
         <!-- 计算按钮 -->
-        <div class="mt-4">
+        <div class="p-4 border-t border-gray-700">
           <button
-            class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            class="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-4 py-3 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:from-gray-600 disabled:to-gray-700 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
             onclick={handleCalculate}
-            disabled={isCalculating}
+            disabled={steadyState?.isCalculating || Object.keys(validationErrors).length > 0}
           >
-            <span class="text-sm">▶</span>
-            {isCalculating ? '计算中...' : '计算'}
+            {#if steadyState?.isCalculating}
+              <svg class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+              </svg>
+              计算中...
+            {:else}
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+              </svg>
+              开始计算
+            {/if}
           </button>
+          
+          <!-- 数据状态指示 -->
+          {#if steadyState?.lastUpdated}
+            <div class="mt-2 text-xs text-gray-500 text-center">
+              数据已保存 • {new Date(steadyState.lastUpdated).toLocaleTimeString()}
+            </div>
+          {/if}
         </div>
       </div>
 
-      <!-- 右侧两张表格 --->
+      <!-- 右侧结果表格区域 -->
       <div class="flex-1 flex gap-4">
-        <!-- 第一张表格：仿真步长 + 15个虚拟数据 -->
-        <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
-          {#if showResults}
+        <!-- 第一张表格：仿真步长 + 15个参数 -->
+        <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden shadow-lg">
+          <div class="bg-gray-750 px-4 py-3 border-b border-gray-700">
+            <h3 class="text-lg font-semibold text-gray-200 flex items-center gap-2">
+              <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+              </svg>
+              基础性能参数
+            </h3>
+          </div>
+          
+          {#if steadyState?.showResults}
             <div class="h-full flex flex-col">
               <div class="flex-1 overflow-auto">
                 <table class="w-full text-sm">
-                  <!-- 表头 -->
                   <thead class="bg-gray-700 sticky top-0">
                     <tr>
-                      <th class="px-4 py-3 text-left font-medium text-gray-200 border-r border-gray-600">名称</th>
+                      <th class="px-4 py-3 text-left font-medium text-gray-200 border-r border-gray-600">参数名称</th>
                       <th class="w-32 px-4 py-3 text-center font-medium text-gray-200">数值</th>
                     </tr>
                   </thead>
                   
-                  <!-- 数据行 -->
                   <tbody>
-                    {#each dataOut.slice(0, 16) as param, index}
+                    {#each steadyState.dataOut.slice(0, 16) as param, index}
                       <tr class="border-b border-gray-600 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
-                        <!-- 参数名称 -->
-                        <td class="px-4 py-3 text-gray-300 border-r border-gray-600">{param.name}</td>
-                        <!-- 数值 -->
-                        <td class="w-32 px-4 py-3 text-center text-white font-mono">{formatDisplayValue(param)}</td>
+                        <td class="px-4 py-3 text-gray-300 border-r border-gray-600 font-medium">{param.name}</td>
+                        <td class="w-32 px-4 py-3 text-center text-white font-mono bg-gray-900">{formatDisplayValue(param)}</td>
                       </tr>
                     {/each}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          {:else}
+            <div class="flex items-center justify-center h-full text-gray-400">
+              <div class="text-center">
+                <svg class="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+                <p class="text-lg font-medium">等待计算结果</p>
+                <p class="text-sm text-gray-500 mt-1">点击"开始计算"按钮获取结果</p>
               </div>
             </div>
           {/if}
         </div>
 
-        <!-- 第二张表格：16个虚拟数据 -->
-        <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
-          {#if showResults}
+        <!-- 第二张表格：16个性能参数 -->
+        <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden shadow-lg">
+          <div class="bg-gray-750 px-4 py-3 border-b border-gray-700">
+            <h3 class="text-lg font-semibold text-gray-200 flex items-center gap-2">
+              <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+              </svg>
+              高级性能参数
+            </h3>
+          </div>
+          
+          {#if steadyState?.showResults}
             <div class="h-full flex flex-col">
               <div class="flex-1 overflow-auto">
                 <table class="w-full text-sm">
-                  <!-- 表头 -->
                   <thead class="bg-gray-700 sticky top-0">
                     <tr>
-                      <th class="px-4 py-3 text-left font-medium text-gray-200 border-r border-gray-600">名称</th>
+                      <th class="px-4 py-3 text-left font-medium text-gray-200 border-r border-gray-600">参数名称</th>
                       <th class="w-32 px-4 py-3 text-center font-medium text-gray-200">数值</th>
                     </tr>
                   </thead>
                   
-                  <!-- 数据行 -->
                   <tbody>
-                    {#each dataOut.slice(16, 32) as param, index}
+                    {#each steadyState.dataOut.slice(16, 32) as param, index}
                       <tr class="border-b border-gray-600 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
-                        <!-- 参数名称 -->
-                        <td class="px-4 py-3 text-gray-300 border-r border-gray-600">{param.name}</td>
-                        <!-- 数值 -->
-                        <td class="w-32 px-4 py-3 text-center text-white font-mono">{formatDisplayValue(param)}</td>
+                        <td class="px-4 py-3 text-gray-300 border-r border-gray-600 font-medium">{param.name}</td>
+                        <td class="w-32 px-4 py-3 text-center text-white font-mono bg-gray-900">{formatDisplayValue(param)}</td>
                       </tr>
                     {/each}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          {:else}
+            <div class="flex items-center justify-center h-full text-gray-400">
+              <div class="text-center">
+                <svg class="w-16 h-16 mx-auto mb-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                </svg>
+                <p class="text-lg font-medium">等待计算结果</p>
+                <p class="text-sm text-gray-500 mt-1">点击"开始计算"按钮获取结果</p>
               </div>
             </div>
           {/if}
