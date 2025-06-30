@@ -1,63 +1,4 @@
 <script lang="ts">
-  import { dataOutStore } from './store.js';
-
-  let dataOut = $state([
-    // 第一张表数据（仿真步长 + 15个虚拟数据）
-    { name: "仿真步长", data: ["0.025"] }, // 第1行：仿真步长 - 使用字符串保持原始格式
-    { name: "低压轴换算转速", data: [8542.30] },
-    { name: "高压轴换算转速", data: [12456.70] },
-    { name: "发动机进口换算流量/kg/s", data: [245.80] },
-    { name: "发动机净推力/kN", data: [15420.50] },
-    { name: "发动机总推力/kN", data: [16890.20] },
-    { name: "发动机进口冲压阻力/kN", data: [245.60] },
-    { name: "发动机总耗油量/kg/h", data: [3456.80] },
-    { name: "主燃烧室耗油量/kg/h", data: [2890.40] },
-    { name: "加力燃烧室耗油量/kg/h", data: [566.40] },
-    { name: "喷管喉道面积/m²", data: [0.245] },
-    { name: "喷管出口面积/m²", data: [0.312] },
-    { name: "风扇出口温度/K", data: [658.40] },
-    { name: "高压压气机出口温度/K", data: [1245.60] },
-    { name: "高压涡轮进口温度/K", data: [1156.80] },
-    { name: "低压涡轮进口温度/K", data: [945.20] },
-    
-    // 第二张表数据（16个虚拟数据）
-    { name: "低压涡轮出口温度/K", data: [756.30] },
-    { name: "风扇出口总压/kPa", data: [245.80] },
-    { name: "高压压气机出口总压/kPa", data: [1280.50] },
-    { name: "高压涡轮进口总压/kPa", data: [1120.30] },
-    { name: "低压涡轮进口总压/kPa", data: [890.70] },
-    { name: "低压涡轮出口总压/kPa", data: [156.40] },
-    { name: "喷管出口总压/kPa", data: [101.30] },
-    { name: "喷管出口速度/m/s", data: [1245.60] },
-    { name: "喷管出口马赫数", data: [2.15] },
-    { name: "推重比", data: [8.45] },
-    { name: "单位推力/N·s/kg", data: [1456.80] },
-    { name: "推进效率", data: [0.85] },
-    { name: "热效率", data: [0.42] },
-    { name: "总效率", data: [0.36] },
-    { name: "燃油消耗率/kg/(kN·h)", data: [0.78] },
-    { name: "比冲/s", data: [1890.50] }
-  ]);
-  $: dataOut = $dataOutStore;  // 绑定到你的 table 渲染逻辑里
-
-  // 如果需要初始化数据
-  import { onMount } from 'svelte';
-  onMount(() => {
-    if ($dataOutStore.length === 0) {
-      dataOutStore.set(generateFakeData()); // 你原来的初始化逻辑
-    }
-  });
-
-  // 格式化显示值 - 仿真步长显示原始字符串，其他数值显示两位小数
-  function formatDisplayValue(param: any): string {
-    if (param.name === "仿真步长") {
-      return param.data[0]; // 直接返回字符串，不格式化
-    } else {
-      const value = param.data[0];
-      return typeof value === 'number' ? value.toFixed(2) : '0.00';
-    }
-  }
-  
   import { invoke } from '@tauri-apps/api/tauri';
 
   let isCalculating = $state(false);
@@ -98,43 +39,43 @@
   let selectedEnvironment = $state('地面');
 
   // 输出参数 - 第一张表：仿真步长 + 15个虚拟数据，第二张表：16个虚拟数据
-  // let dataOut = $state([
-  //   // 第一张表数据（仿真步长 + 15个虚拟数据）
-  //   { name: "仿真步长", data: ["0.025"] }, // 第1行：仿真步长 - 使用字符串保持原始格式
-  //   { name: "低压轴换算转速", data: [8542.30] },
-  //   { name: "高压轴换算转速", data: [12456.70] },
-  //   { name: "发动机进口换算流量/kg/s", data: [245.80] },
-  //   { name: "发动机净推力/kN", data: [15420.50] },
-  //   { name: "发动机总推力/kN", data: [16890.20] },
-  //   { name: "发动机进口冲压阻力/kN", data: [245.60] },
-  //   { name: "发动机总耗油量/kg/h", data: [3456.80] },
-  //   { name: "主燃烧室耗油量/kg/h", data: [2890.40] },
-  //   { name: "加力燃烧室耗油量/kg/h", data: [566.40] },
-  //   { name: "喷管喉道面积/m²", data: [0.245] },
-  //   { name: "喷管出口面积/m²", data: [0.312] },
-  //   { name: "风扇出口温度/K", data: [658.40] },
-  //   { name: "高压压气机出口温度/K", data: [1245.60] },
-  //   { name: "高压涡轮进口温度/K", data: [1156.80] },
-  //   { name: "低压涡轮进口温度/K", data: [945.20] },
+  let dataOut = $state([
+    // 第一张表数据（仿真步长 + 15个虚拟数据）
+    { name: "仿真步长", data: ["0.025"] }, // 第1行：仿真步长 - 使用字符串保持原始格式
+    { name: "低压轴换算转速", data: [8542.30] },
+    { name: "高压轴换算转速", data: [12456.70] },
+    { name: "发动机进口换算流量/kg/s", data: [245.80] },
+    { name: "发动机净推力/kN", data: [15420.50] },
+    { name: "发动机总推力/kN", data: [16890.20] },
+    { name: "发动机进口冲压阻力/kN", data: [245.60] },
+    { name: "发动机总耗油量/kg/h", data: [3456.80] },
+    { name: "主燃烧室耗油量/kg/h", data: [2890.40] },
+    { name: "加力燃烧室耗油量/kg/h", data: [566.40] },
+    { name: "喷管喉道面积/m²", data: [0.245] },
+    { name: "喷管出口面积/m²", data: [0.312] },
+    { name: "风扇出口温度/K", data: [658.40] },
+    { name: "高压压气机出口温度/K", data: [1245.60] },
+    { name: "高压涡轮进口温度/K", data: [1156.80] },
+    { name: "低压涡轮进口温度/K", data: [945.20] },
     
-  //   // 第二张表数据（16个虚拟数据）
-  //   { name: "低压涡轮出口温度/K", data: [756.30] },
-  //   { name: "风扇出口总压/kPa", data: [245.80] },
-  //   { name: "高压压气机出口总压/kPa", data: [1280.50] },
-  //   { name: "高压涡轮进口总压/kPa", data: [1120.30] },
-  //   { name: "低压涡轮进口总压/kPa", data: [890.70] },
-  //   { name: "低压涡轮出口总压/kPa", data: [156.40] },
-  //   { name: "喷管出口总压/kPa", data: [101.30] },
-  //   { name: "喷管出口速度/m/s", data: [1245.60] },
-  //   { name: "喷管出口马赫数", data: [2.15] },
-  //   { name: "推重比", data: [8.45] },
-  //   { name: "单位推力/N·s/kg", data: [1456.80] },
-  //   { name: "推进效率", data: [0.85] },
-  //   { name: "热效率", data: [0.42] },
-  //   { name: "总效率", data: [0.36] },
-  //   { name: "燃油消耗率/kg/(kN·h)", data: [0.78] },
-  //   { name: "比冲/s", data: [1890.50] }
-  // ]);
+    // 第二张表数据（16个虚拟数据）
+    { name: "低压涡轮出口温度/K", data: [756.30] },
+    { name: "风扇出口总压/kPa", data: [245.80] },
+    { name: "高压压气机出口总压/kPa", data: [1280.50] },
+    { name: "高压涡轮进口总压/kPa", data: [1120.30] },
+    { name: "低压涡轮进口总压/kPa", data: [890.70] },
+    { name: "低压涡轮出口总压/kPa", data: [156.40] },
+    { name: "喷管出口总压/kPa", data: [101.30] },
+    { name: "喷管出口速度/m/s", data: [1245.60] },
+    { name: "喷管出口马赫数", data: [2.15] },
+    { name: "推重比", data: [8.45] },
+    { name: "单位推力/N·s/kg", data: [1456.80] },
+    { name: "推进效率", data: [0.85] },
+    { name: "热效率", data: [0.42] },
+    { name: "总效率", data: [0.36] },
+    { name: "燃油消耗率/kg/(kN·h)", data: [0.78] },
+    { name: "比冲/s", data: [1890.50] }
+  ]);
 
   // 检查是否在 Tauri 环境中
   function isTauriEnvironment(): boolean {
@@ -276,15 +217,15 @@
     }
   }
 
-  // // 格式化显示值 - 仿真步长显示原始字符串，其他数值显示两位小数
-  // function formatDisplayValue(param: any): string {
-  //   if (param.name === "仿真步长") {
-  //     return param.data[0]; // 直接返回字符串，不格式化
-  //   } else {
-  //     const value = param.data[0];
-  //     return typeof value === 'number' ? value.toFixed(2) : '0.00';
-  //   }
-  // }
+  // 格式化显示值 - 仿真步长显示原始字符串，其他数值显示两位小数
+  function formatDisplayValue(param: any): string {
+    if (param.name === "仿真步长") {
+      return param.data[0]; // 直接返回字符串，不格式化
+    } else {
+      const value = param.data[0];
+      return typeof value === 'number' ? value.toFixed(2) : '0.00';
+    }
+  }
 </script>
 
 <div class="h-[calc(100vh-120px)] bg-gray-900 p-4 sm:p-6 lg:p-8">
