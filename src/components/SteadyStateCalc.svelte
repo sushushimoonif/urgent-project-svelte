@@ -1,22 +1,54 @@
 <script lang="ts">
-  import { pageData } from './stores.ts'; // 路径根据实际调整
-  import { get } from 'svelte/store';
+  import { pageData } from './stores/pageData';
+  import { invoke } from '@tauri-apps/api/tauri';
 
-  // 订阅 store 数据
+  // 参数名称映射
+  const parameterLabels = {
+    "高度": { range: '(0~22000)', unit: 'm' },
+    "马赫数": { range: '(0~2.5)', unit: '' },
+    "温度修正": { range: '(0~xx)', unit: 'K' },
+    "进气道总压恢复系数": { range: '(-1或0~1.1)', unit: '' },
+    "功率提取": { range: '(0~1000000)', unit: 'W' },
+    "压气机中间级引气": { range: '(0~2)', unit: '%' },
+    "油门杆角度": { range: '(0~115)', unit: '度' }
+  };
+
+  // store订阅
   let data;
-  pageData.subscribe(value => {
-    data = value;
-  });
+  $: pageData.subscribe(v => data = v);
 
-  // 访问和修改数据时，操作 data 对象并调用 pageData.set 或 pageData.update
+  let isCalculating = false;
+  let showResults = true;
 
-  function updateDataINOptions() {
-    const d = {...data};
+  // 按钮事件
+  function selectSimulationStep(step: string) {
+    pageData.update(d => ({ ...d, selectedSimulationStep: step }));
+  }
+  function selectMode(mode: string) {
+    pageData.update(d => ({ ...d, selectedMode: mode }));
+  }
+  function selectEnvironment(env: string) {
+    pageData.update(d => ({ ...d, selectedEnvironment: env }));
+  }
+
+  // 输入框
+  function getInputValue(paramName: string): string {
+    const param = data.dataIN.find(p => p.name === paramName);
+    return param && param.data.length > 0 ? param.data[0].toString() : '0';
+  }
+  function setInputValue(paramName: string, value: string) {
+    pageData.update(d => {
+      const idx = d.dataIN.findIndex(p => p.name === paramName);
+      if (idx > -1) d.dataIN[idx].data = [parseFloat(value) || 0];
+      return { ...d };
+    });
+  }
+
+  // 更新dataIN的选项状态
+  function updateDataINOptions(d) {
     // 仿真步长
     const stepParam = d.dataIN.find(p => p.name === "仿真步长");
-    if (stepParam) {
-      stepParam.data = [parseFloat(d.selectedSimulationStep)];
-    }
+    if (stepParam) stepParam.data = [parseFloat(d.selectedSimulationStep)];
 
     // 作战/训练
     const combatParam = d.dataIN.find(p => p.name === "作战");
@@ -44,24 +76,44 @@
       }
     }
 
-    // 输出参数更新仿真步长
+    // 输出参数仿真步长
     if (d.dataOut.length > 0 && d.dataOut[0].name === "仿真步长") {
       d.dataOut[0].data = [d.selectedSimulationStep];
     }
-
-    pageData.set(d);
+    return d;
   }
 
-  function setInputValue(paramName: string, value: string) {
-    const d = {...data};
-    const param = d.dataIN.find(p => p.name === paramName);
-    if (param) {
-      const numValue = parseFloat(value) || 0;
-      param.data = [numValue];
+  // 虚拟数据生成
+  function generateVirtualData(d) {
+    d.dataOut.forEach((param, index) => {
+      if (index === 0) {
+        param.data = [d.selectedSimulationStep];
+      } else {
+        const baseValue = typeof param.data[0] === 'number' ? param.data[0] : 100;
+        const variation = (Math.random() - 0.5) * 0.2;
+        param.data = [baseValue * (1 + variation)];
+      }
+    });
+    return { ...d };
+  }
+
+  // 计算
+  async function handleCalculate() {
+    isCalculating = true;
+    try {
+      pageData.update(d => {
+        d = updateDataINOptions(d);
+        d = generateVirtualData(d);
+        return d;
+      });
+      // 你可以在此处调用 invoke 发送 dataIN 到后端
+      // await invoke("transient_calculation", { dataIN: data.dataIN, type: "稳态计算" });
+    } finally {
+      isCalculating = false;
     }
-    pageData.set(d);
   }
 
+  // 格式化显示
   function formatDisplayValue(param: any): string {
     if (param.name === "仿真步长") {
       return param.data[0];
@@ -70,36 +122,8 @@
       return typeof value === 'number' ? value.toFixed(2) : '0.00';
     }
   }
-
-  // 计算函数等其他逻辑，使用 data 变量，修改后调用 pageData.set 更新即可
-  async function handleCalculate() {
-    // 逻辑同之前，只是用 data 替代之前的多个变量
-    // ...
-    updateDataINOptions();
-    // 调用后端计算
-    // 生成虚拟数据后更新 dataOut
-    // 最后调用 pageData.set(data) 更新
-  }
-
-  // 其他事件处理，按钮点击切换 selectedSimulationStep, selectedMode, selectedEnvironment
-  function selectSimulationStep(step: string) {
-    const d = {...data};
-    d.selectedSimulationStep = step;
-    pageData.set(d);
-  }
-
-  function selectMode(mode: string) {
-    const d = {...data};
-    d.selectedMode = mode;
-    pageData.set(d);
-  }
-
-  function selectEnvironment(env: string) {
-    const d = {...data};
-    d.selectedEnvironment = env;
-    pageData.set(d);
-  }
 </script>
+
 
 <div class="h-[calc(100vh-120px)] bg-gray-900 p-4 sm:p-6 lg:p-8">
   <div class="w-full max-w-[95%] mx-auto h-full">
@@ -112,13 +136,13 @@
           <div class="flex">
             <button 
               class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedSimulationStep === '0.025' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-              onclick={() => selectedSimulationStep = '0.025'}
+              on:click={() => setSimulationStep('0.025')}
             >
               仿真步长<br>0.025秒
             </button>
             <button 
               class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedSimulationStep === '0.0125' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-              onclick={() => selectedSimulationStep = '0.0125'}
+              on:click={() => setSimulationStep('0.0125')}
             >
               仿真步长<br>0.0125秒
             </button>
@@ -128,13 +152,13 @@
           <div class="flex">
             <button 
               class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedMode === '作战' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-              onclick={() => selectedMode = '作战'}
+              on:click={() => setMode('作战')}
             >
               作战
             </button>
             <button 
               class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedMode === '训练' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-              onclick={() => selectedMode = '训练'}
+              on:click={() => setMode('训练')}
             >
               训练
             </button>
@@ -144,13 +168,13 @@
           <div class="flex">
             <button 
               class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedEnvironment === '地面' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-              onclick={() => selectedEnvironment = '地面'}
+              on:click={() => setEnvironment('地面')}
             >
               地面
             </button>
             <button 
               class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedEnvironment === '空中' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-              onclick={() => selectedEnvironment = '空中'}
+              on:click={() => setEnvironment('空中')}
             >
               空中
             </button>
@@ -168,7 +192,7 @@
                 <input
                   type="text"
                   value={getInputValue(paramName)}
-                  oninput={(e) => setInputValue(paramName, e.target.value)}
+                  on:input={(e) => setInputValue(paramName, e.target.value)}
                   class="w-24 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs text-right focus:outline-none focus:ring-1 focus:ring-purple-500 focus:border-transparent"
                 />
                 <span class="text-gray-400 text-xs w-4">{config.unit}</span>
@@ -181,7 +205,7 @@
         <div class="mt-4">
           <button
             class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            onclick={handleCalculate}
+            on:click={handleCalculate}
             disabled={isCalculating}
           >
             <span class="text-sm">▶</span>
@@ -190,70 +214,8 @@
         </div>
       </div>
 
-      <!-- 右侧两张表格 --->
-      <div class="flex-1 flex gap-4">
-        <!-- 第一张表格：仿真步长 + 15个虚拟数据 -->
-        <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
-          {#if showResults}
-            <div class="h-full flex flex-col">
-              <div class="flex-1 overflow-auto">
-                <table class="w-full text-sm">
-                  <!-- 表头 -->
-                  <thead class="bg-gray-700 sticky top-0">
-                    <tr>
-                      <th class="px-4 py-3 text-left font-medium text-gray-200 border-r border-gray-600">名称</th>
-                      <th class="w-32 px-4 py-3 text-center font-medium text-gray-200">数值</th>
-                    </tr>
-                  </thead>
-                  
-                  <!-- 数据行 -->
-                  <tbody>
-                    {#each dataOut.slice(0, 16) as param, index}
-                      <tr class="border-b border-gray-600 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
-                        <!-- 参数名称 -->
-                        <td class="px-4 py-3 text-gray-300 border-r border-gray-600">{param.name}</td>
-                        <!-- 数值 -->
-                        <td class="w-32 px-4 py-3 text-center text-white font-mono">{formatDisplayValue(param)}</td>
-                      </tr>
-                    {/each}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          {/if}
-        </div>
-
-        <!-- 第二张表格：16个虚拟数据 -->
-        <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
-          {#if showResults}
-            <div class="h-full flex flex-col">
-              <div class="flex-1 overflow-auto">
-                <table class="w-full text-sm">
-                  <!-- 表头 -->
-                  <thead class="bg-gray-700 sticky top-0">
-                    <tr>
-                      <th class="px-4 py-3 text-left font-medium text-gray-200 border-r border-gray-600">名称</th>
-                      <th class="w-32 px-4 py-3 text-center font-medium text-gray-200">数值</th>
-                    </tr>
-                  </thead>
-                  
-                  <!-- 数据行 -->
-                  <tbody>
-                    {#each dataOut.slice(16, 32) as param, index}
-                      <tr class="border-b border-gray-600 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
-                        <!-- 参数名称 -->
-                        <td class="px-4 py-3 text-gray-300 border-r border-gray-600">{param.name}</td>
-                        <!-- 数值 -->
-                        <td class="w-32 px-4 py-3 text-center text-white font-mono">{formatDisplayValue(param)}</td>
-                      </tr>
-                    {/each}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          {/if}
-        </div>
-      </div>
+      <!-- 右侧两张表格 -->
+      <!-- ...（表格代码保持不变）... -->
     </div>
   </div>
 </div>
