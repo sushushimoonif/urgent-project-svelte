@@ -48,8 +48,14 @@
     }
   });
 
-  function formatDisplayValue(param) {
-    return param.value;
+  // 格式化显示值 - 仿真步长显示原始字符串，其他数值显示两位小数
+  function formatDisplayValue(param: any): string {
+    if (param.name === "仿真步长") {
+      return param.data[0]; // 直接返回字符串，不格式化
+    } else {
+      const value = param.data[0];
+      return typeof value === 'number' ? value.toFixed(2) : '0.00';
+    }
   }
   
   import { invoke } from '@tauri-apps/api/tauri';
@@ -270,15 +276,15 @@
     }
   }
 
-  // 格式化显示值 - 仿真步长显示原始字符串，其他数值显示两位小数
-  function formatDisplayValue(param: any): string {
-    if (param.name === "仿真步长") {
-      return param.data[0]; // 直接返回字符串，不格式化
-    } else {
-      const value = param.data[0];
-      return typeof value === 'number' ? value.toFixed(2) : '0.00';
-    }
-  }
+  // // 格式化显示值 - 仿真步长显示原始字符串，其他数值显示两位小数
+  // function formatDisplayValue(param: any): string {
+  //   if (param.name === "仿真步长") {
+  //     return param.data[0]; // 直接返回字符串，不格式化
+  //   } else {
+  //     const value = param.data[0];
+  //     return typeof value === 'number' ? value.toFixed(2) : '0.00';
+  //   }
+  // }
 </script>
 
 <div class="h-[calc(100vh-120px)] bg-gray-900 p-4 sm:p-6 lg:p-8">
