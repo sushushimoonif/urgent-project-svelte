@@ -67,55 +67,41 @@
     { name: "比冲/s", data: [1890.50] }
   ]);
 
-  // 参数配置 - 增强的参数信息
+  // 参数配置 - 根据图片更新参数信息
   const parameterConfig = {
     "高度": { 
       range: '(0~22000)', 
       unit: 'm',
-      description: '飞行高度，影响大气密度和温度',
-      validation: { min: 0, max: 22000 },
       placeholder: '0'
     },
     "马赫数": { 
       range: '(0~2.5)', 
       unit: '',
-      description: '飞行马赫数，影响进气道性能',
-      validation: { min: 0, max: 2.5 },
-      placeholder: '0.0'
+      placeholder: '0'
     },
     "温度修正": { 
-      range: '(≥0)', 
+      range: '(-50~50)', 
       unit: 'K',
-      description: '大气温度修正值',
-      validation: { min: 0, max: 100 },
       placeholder: '0'
     },
     "进气道总压恢复系数": { 
       range: '(-1或0~1.1)', 
-      unit: '',
-      description: '进气道效率参数，-1表示自动计算',
-      validation: { min: -1, max: 1.1 },
+      unit: 'm',
       placeholder: '-1'
     },
     "功率提取": { 
-      range: '(0~1000000)', 
-      unit: 'W',
-      description: '从发动机提取的功率',
-      validation: { min: 0, max: 1000000 },
+      range: '(0~600)', 
+      unit: 'kW',
       placeholder: '0'
     },
-    "压气机中间级引气": { 
+    "压气机出口座舱引气": { 
       range: '(0~2)', 
-      unit: '%',
-      description: '压气机引气百分比',
-      validation: { min: 0, max: 2 },
+      unit: 'kg/s',
       placeholder: '0'
     },
     "油门杆角度": { 
       range: '(0~115)', 
-      unit: '度',
-      description: '油门杆位置角度',
-      validation: { min: 0, max: 115 },
+      unit: 'deg',
       placeholder: '66'
     }
   };
@@ -131,19 +117,29 @@
     const config = parameterConfig[paramName];
     if (!config) return null;
 
-    const { validation } = config;
-    
-    if (value < validation.min) {
-      return `值不能小于 ${validation.min}`;
-    }
-    
-    if (value > validation.max) {
-      return `值不能大于 ${validation.max}`;
-    }
-    
-    // 特殊验证：进气道总压恢复系数
-    if (paramName === "进气道总压恢复系数" && value !== -1 && (value < 0 || value > 1.1)) {
-      return '值必须为-1或在0~1.1范围内';
+    // 根据参数名称进行验证
+    switch (paramName) {
+      case "高度":
+        if (value < 0 || value > 22000) return '值必须在0~22000范围内';
+        break;
+      case "马赫数":
+        if (value < 0 || value > 2.5) return '值必须在0~2.5范围内';
+        break;
+      case "温度修正":
+        if (value < -50 || value > 50) return '值必须在-50~50范围内';
+        break;
+      case "进气道总压恢复系数":
+        if (value !== -1 && (value < 0 || value > 1.1)) return '值必须为-1或在0~1.1范围内';
+        break;
+      case "功率提取":
+        if (value < 0 || value > 600) return '值必须在0~600范围内';
+        break;
+      case "压气机出口座舱引气":
+        if (value < 0 || value > 2) return '值必须在0~2范围内';
+        break;
+      case "油门杆角度":
+        if (value < 0 || value > 115) return '值必须在0~115范围内';
+        break;
     }
     
     return null;
@@ -334,7 +330,7 @@
 <div class="h-[calc(100vh-120px)] bg-gray-900 p-4 sm:p-6 lg:p-8">
   <div class="w-full max-w-[95%] mx-auto h-full">
     <div class="flex h-full gap-4">
-      <!-- 左侧输入面板 -->
+      <!-- 左侧输入面板 - 参考图片样式 -->
       <div class="w-80 bg-gray-800 border border-gray-700 rounded-lg flex flex-col shadow-lg">
         <!-- 面板标题 -->
         <div class="bg-gray-750 px-4 py-3 border-b border-gray-700 rounded-t-lg">
@@ -346,203 +342,136 @@
           </h2>
         </div>
 
-        <div class="flex-1 p-4 overflow-y-auto">
-          <!-- 仿真步长、作战/训练、地面/空中按钮 -->
-          <div class="mb-6 space-y-3">
-            <div class="bg-gray-750 rounded-lg p-3 border border-gray-600">
-              <h3 class="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
-                <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                仿真步长
-              </h3>
-              <div class="grid grid-cols-2 gap-2">
-                <!-- 仿真步长按钮 - 避免组件销毁，使用固定的class -->
-                <button 
-                  class="px-3 py-2 text-xs font-medium rounded transition-all duration-200"
-                  class:bg-purple-600={selectedSimulationStep === '0.025'}
-                  class:text-white={selectedSimulationStep === '0.025'}
-                  class:shadow-lg={selectedSimulationStep === '0.025'}
-                  class:bg-gray-600={selectedSimulationStep !== '0.025'}
-                  class:text-gray-300={selectedSimulationStep !== '0.025'}
-                  class:hover:bg-gray-500={selectedSimulationStep !== '0.025'}
-                  class:hover:text-white={selectedSimulationStep !== '0.025'}
-                  onclick={() => selectedSimulationStep = '0.025'}
-                >
-                  0.025秒
-                </button>
-                <button 
-                  class="px-3 py-2 text-xs font-medium rounded transition-all duration-200"
-                  class:bg-purple-600={selectedSimulationStep === '0.0125'}
-                  class:text-white={selectedSimulationStep === '0.0125'}
-                  class:shadow-lg={selectedSimulationStep === '0.0125'}
-                  class:bg-gray-600={selectedSimulationStep !== '0.0125'}
-                  class:text-gray-300={selectedSimulationStep !== '0.0125'}
-                  class:hover:bg-gray-500={selectedSimulationStep !== '0.0125'}
-                  class:hover:text-white={selectedSimulationStep !== '0.0125'}
-                  onclick={() => selectedSimulationStep = '0.0125'}
-                >
-                  0.0125秒
-                </button>
-              </div>
-            </div>
-            
-            <div class="bg-gray-750 rounded-lg p-3 border border-gray-600">
-              <h3 class="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
-                <svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-                </svg>
-                运行模式
-              </h3>
-              <div class="grid grid-cols-2 gap-2">
-                <!-- 作战/训练按钮 - 避免组件销毁 -->
-                <button 
-                  class="px-3 py-2 text-xs font-medium rounded transition-all duration-200"
-                  class:bg-purple-600={selectedMode === '作战'}
-                  class:text-white={selectedMode === '作战'}
-                  class:shadow-lg={selectedMode === '作战'}
-                  class:bg-gray-600={selectedMode !== '作战'}
-                  class:text-gray-300={selectedMode !== '作战'}
-                  class:hover:bg-gray-500={selectedMode !== '作战'}
-                  class:hover:text-white={selectedMode !== '作战'}
-                  onclick={() => selectedMode = '作战'}
-                >
-                  作战
-                </button>
-                <button 
-                  class="px-3 py-2 text-xs font-medium rounded transition-all duration-200"
-                  class:bg-purple-600={selectedMode === '训练'}
-                  class:text-white={selectedMode === '训练'}
-                  class:shadow-lg={selectedMode === '训练'}
-                  class:bg-gray-600={selectedMode !== '训练'}
-                  class:text-gray-300={selectedMode !== '训练'}
-                  class:hover:bg-gray-500={selectedMode !== '训练'}
-                  class:hover:text-white={selectedMode !== '训练'}
-                  onclick={() => selectedMode = '训练'}
-                >
-                  训练
-                </button>
-              </div>
-            </div>
-            
-            <div class="bg-gray-750 rounded-lg p-3 border border-gray-600">
-              <h3 class="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
-                <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                飞行环境
-              </h3>
-              <div class="grid grid-cols-2 gap-2">
-                <!-- 地面/空中按钮 - 避免组件销毁 -->
-                <button 
-                  class="px-3 py-2 text-xs font-medium rounded transition-all duration-200"
-                  class:bg-purple-600={selectedEnvironment === '地面'}
-                  class:text-white={selectedEnvironment === '地面'}
-                  class:shadow-lg={selectedEnvironment === '地面'}
-                  class:bg-gray-600={selectedEnvironment !== '地面'}
-                  class:text-gray-300={selectedEnvironment !== '地面'}
-                  class:hover:bg-gray-500={selectedEnvironment !== '地面'}
-                  class:hover:text-white={selectedEnvironment !== '地面'}
-                  onclick={() => selectedEnvironment = '地面'}
-                >
-                  地面
-                </button>
-                <button 
-                  class="px-3 py-2 text-xs font-medium rounded transition-all duration-200"
-                  class:bg-purple-600={selectedEnvironment === '空中'}
-                  class:text-white={selectedEnvironment === '空中'}
-                  class:shadow-lg={selectedEnvironment === '空中'}
-                  class:bg-gray-600={selectedEnvironment !== '空中'}
-                  class:text-gray-300={selectedEnvironment !== '空中'}
-                  class:hover:bg-gray-500={selectedEnvironment !== '空中'}
-                  class:hover:text-white={selectedEnvironment !== '空中'}
-                  onclick={() => selectedEnvironment = '空中'}
-                >
-                  空中
-                </button>
-              </div>
+        <div class="flex-1 p-6 overflow-y-auto">
+          <!-- 作战/训练、地面/空中按钮 - 参考图片布局 -->
+          <div class="mb-8 space-y-4">
+            <!-- 作战/训练按钮 - 2x2网格布局 -->
+            <div class="grid grid-cols-2 gap-3">
+              <button 
+                class="px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200"
+                class:bg-purple-600={selectedMode === '作战'}
+                class:text-white={selectedMode === '作战'}
+                class:shadow-lg={selectedMode === '作战'}
+                class:bg-gray-600={selectedMode !== '作战'}
+                class:text-gray-300={selectedMode !== '作战'}
+                class:hover:bg-gray-500={selectedMode !== '作战'}
+                class:hover:text-white={selectedMode !== '作战'}
+                onclick={() => selectedMode = '作战'}
+              >
+                作战
+              </button>
+              <button 
+                class="px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200"
+                class:bg-purple-600={selectedMode === '训练'}
+                class:text-white={selectedMode === '训练'}
+                class:shadow-lg={selectedMode === '训练'}
+                class:bg-gray-600={selectedMode !== '训练'}
+                class:text-gray-300={selectedMode !== '训练'}
+                class:hover:bg-gray-500={selectedMode !== '训练'}
+                class:hover:text-white={selectedMode !== '训练'}
+                onclick={() => selectedMode = '训练'}
+              >
+                训练
+              </button>
+              
+              <!-- 地面/空中按钮 -->
+              <button 
+                class="px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200"
+                class:bg-purple-600={selectedEnvironment === '地面'}
+                class:text-white={selectedEnvironment === '地面'}
+                class:shadow-lg={selectedEnvironment === '地面'}
+                class:bg-gray-600={selectedEnvironment !== '地面'}
+                class:text-gray-300={selectedEnvironment !== '地面'}
+                class:hover:bg-gray-500={selectedEnvironment !== '地面'}
+                class:hover:text-white={selectedEnvironment !== '地面'}
+                onclick={() => selectedEnvironment = '地面'}
+              >
+                地面
+              </button>
+              <button 
+                class="px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200"
+                class:bg-purple-600={selectedEnvironment === '空中'}
+                class:text-white={selectedEnvironment === '空中'}
+                class:shadow-lg={selectedEnvironment === '空中'}
+                class:bg-gray-600={selectedEnvironment !== '空中'}
+                class:text-gray-300={selectedEnvironment !== '空中'}
+                class:hover:bg-gray-500={selectedEnvironment !== '空中'}
+                class:hover:text-white={selectedEnvironment !== '空中'}
+                onclick={() => selectedEnvironment = '空中'}
+              >
+                空中
+              </button>
             </div>
           </div>
 
-          <!-- 输入参数列表 -->
-          <div class="space-y-4">
-            <h3 class="text-sm font-medium text-gray-300 border-b border-gray-600 pb-2 flex items-center gap-2">
-              <svg class="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-              </svg>
-              输入参数
-            </h3>
-            
+          <!-- 分隔线 -->
+          <div class="border-t border-gray-600 mb-8"></div>
+
+          <!-- 输入参数列表 - 参考图片样式 -->
+          <div class="space-y-6">
             {#each Object.entries(parameterConfig) as [paramName, config]}
-              <div class="bg-gray-750 rounded-lg p-3 border border-gray-600 hover:border-gray-500 transition-colors">
-                <div class="space-y-2">
-                  <!-- 参数标签和范围 -->
-                  <div class="flex items-center justify-between">
-                    <label class="text-xs font-medium text-gray-300">
-                      {paramName}
-                    </label>
-                    <span class="text-xs text-gray-500">{config.range}</span>
+              <div class="space-y-2">
+                <!-- 参数名称和范围 - 居中显示 -->
+                <div class="text-center">
+                  <div class="text-base font-medium text-gray-200 mb-1">
+                    {paramName}
                   </div>
-                  
-                  <!-- 参数描述 -->
-                  <p class="text-xs text-gray-400 leading-relaxed">{config.description}</p>
-                  
-                  <!-- 输入框和单位 -->
-                  <div class="flex items-center gap-2">
-                    <div class="flex-1 relative">
-                      <input
-                        type="number"
-                        value={getInputValue(paramName)}
-                        oninput={(e) => handleInputChange(paramName, e.target.value)}
-                        placeholder={config.placeholder}
-                        step="any"
-                        class="w-full bg-gray-700 border rounded px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 transition-all duration-200"
-                        class:border-red-500={validationErrors[paramName]}
-                        class:focus:ring-red-500={validationErrors[paramName]}
-                        class:border-gray-600={!validationErrors[paramName]}
-                        class:focus:ring-purple-500={!validationErrors[paramName]}
-                        class:focus:border-transparent={!validationErrors[paramName]}
-                      />
-                      {#if config.unit}
-                        <span class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm pointer-events-none">
-                          {config.unit}
-                        </span>
-                      {/if}
-                    </div>
+                  <div class="text-sm text-gray-400">
+                    {config.range}
                   </div>
-                  
-                  <!-- 验证错误提示 -->
-                  {#if validationErrors[paramName]}
-                    <div class="flex items-center gap-1 text-red-400 text-xs">
-                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                      </svg>
-                      {validationErrors[paramName]}
-                    </div>
-                  {/if}
                 </div>
+                
+                <!-- 输入框和单位 - 右对齐布局 -->
+                <div class="flex items-center justify-end gap-3">
+                  <input
+                    type="number"
+                    value={getInputValue(paramName)}
+                    oninput={(e) => handleInputChange(paramName, e.target.value)}
+                    placeholder={config.placeholder}
+                    step="any"
+                    class="w-20 bg-gray-700 border rounded px-3 py-2 text-white text-lg font-mono text-center focus:outline-none focus:ring-2 transition-all duration-200"
+                    class:border-red-500={validationErrors[paramName]}
+                    class:focus:ring-red-500={validationErrors[paramName]}
+                    class:border-gray-600={!validationErrors[paramName]}
+                    class:focus:ring-purple-500={!validationErrors[paramName]}
+                    class:focus:border-transparent={!validationErrors[paramName]}
+                  />
+                  <span class="text-gray-300 text-base font-medium min-w-[40px]">
+                    {config.unit}
+                  </span>
+                </div>
+                
+                <!-- 验证错误提示 -->
+                {#if validationErrors[paramName]}
+                  <div class="flex items-center justify-center gap-1 text-red-400 text-xs">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    {validationErrors[paramName]}
+                  </div>
+                {/if}
               </div>
             {/each}
           </div>
         </div>
 
-        <!-- 计算按钮 -->
-        <div class="p-4 border-t border-gray-700">
+        <!-- 计算按钮 - 参考图片样式 -->
+        <div class="p-6 border-t border-gray-700">
           <button
-            class="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-4 py-3 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:from-gray-600 disabled:to-gray-700 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+            class="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-6 py-4 rounded-lg font-medium text-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:from-gray-600 disabled:to-gray-700 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl"
             onclick={handleCalculate}
             disabled={isCalculating || Object.keys(validationErrors).length > 0}
           >
             {#if isCalculating}
-              <svg class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
               </svg>
               计算中...
             {:else}
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
               </svg>
-              开始计算
+              ▶ 计算
             {/if}
           </button>
         </div>
