@@ -1,10 +1,9 @@
 <script lang="ts">
-  import CurveChartManager from './CurveChartManager.svelte';
-  import RealTimeMonitor from './RealTimeMonitor.svelte';
-  import UPlotChart from './UPlotChart.svelte';
+    import CurveChartManager from './CurveChartManager.svelte';
+    import RealTimeMonitor from './RealTimeMonitor.svelte';
+    import UPlotChart from './UPlotChart.svelte';
     import SwitcherGroup from "./SwitcherGroup.svelte";
     import ParamsInputGroup from "./ParamsInputGroup.svelte";
-
     import { invoke } from "@tauri-apps/api/core";
 
     let isCalculating = $state(false);
