@@ -1,4 +1,21 @@
 <script lang="ts">
+  import { dataOutStore } from './store.js';
+
+  let dataOut = [];
+  $: dataOut = $dataOutStore;  // 绑定到你的 table 渲染逻辑里
+
+  // 如果需要初始化数据
+  import { onMount } from 'svelte';
+  onMount(() => {
+    if ($dataOutStore.length === 0) {
+      dataOutStore.set(generateFakeData()); // 你原来的初始化逻辑
+    }
+  });
+
+  function formatDisplayValue(param) {
+    return param.value;
+  }
+  
   import { invoke } from '@tauri-apps/api/tauri';
 
   let isCalculating = $state(false);
