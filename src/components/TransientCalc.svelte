@@ -1,11 +1,17 @@
 <script lang="ts">
   import CurveChartManager from './CurveChartManager.svelte';
+  import RealTimeMonitor from './RealTimeMonitor.svelte';
   import UPlotChart from './UPlotChart.svelte';
 
   let isCalculating = $state(false);
   let showResults = $state(false);
   let selectedFile = $state<File | null>(null);
   let csvData = $state<string[][]>([]);
+  let showMonitorModal = $state(false);
+
+  // 模态框位置状态
+  let monitorModalPosition = $state({ x: 200, y: 150 });
+  let monitorModalSize = $state({ width: 400, height: 500 });
 
   // 输入数据结构 - dataIn格式（从CSV表格数据转换而来）
   let dataIn = $state<Array<{name: string, data: number[]}>>([]);
@@ -82,8 +88,11 @@
     { name: '喷管出口速度', selected: false }
   ]);
 
-  // data_chart_{id}数据存储 - 按照要求的格式：[[time,series1,series2,series3],...]
-  let chartDataSets = $state<Map<number, number[][]>>(new Map());
+  // data_chart_{id}数据存储 - 按照要求的格式：[{name:"曲线图-1";data:[[time,series1,series2,series3],...]}]
+  let chartDataSets = $state<Map<number, {name: string, data: number[][]}>>(new Map());
+
+  // 实时监控表格数据
+  let monitorTableData = $state<Array<{parameter: string, value: string}>>([]);
 
   // 辅助函数：获取指定图表的data_chart数据
   function getDataChart(chartId: number) {
@@ -97,8 +106,9 @@
     console.log('=== 当前所有 data_chart 数据 ===');
     chartDataSets.forEach((data, id) => {
       console.log(`data_chart_${id}:`, {
-        dataLength: data.length,
-        sampleData: data.slice(0, 3) // 只显示前3个数据点作为示例
+        name: data.name,
+        dataLength: data.data.length,
+        sampleData: data.data.slice(0, 3) // 只显示前3个数据点作为示例
       });
     });
     console.log('================================');
@@ -311,12 +321,12 @@
     // 生成模拟的dataOut数据
     const mockDataOut: Array<{name: string, data: number[]}> = [
       {
-        name: "time",
-        data: Array.from({length: dataPointCount}, (_, i) => i * 0.025) // 使用固定的时间步长
-      },
-      {
         name: "高压涡轮出口总压",
         data: Array.from({length: dataPointCount}, (_, i) => 1120 + Math.sin(i * 0.5) * 100 + Math.random() * 50)
+      },
+      {
+        name: "低压涡轮出口温度",
+        data: Array.from({length: dataPointCount}, (_, i) => 700 + Math.cos(i * 0.3) * 80 + Math.random() * 40)
       },
       {
         name: "高压压气机出口总压",
@@ -325,10 +335,6 @@
       {
         name: "低压涡轮出口总压",
         data: Array.from({length: dataPointCount}, (_, i) => 756 + Math.cos(i * 0.6) * 90 + Math.random() * 45)
-      },
-      {
-        name: "低压涡轮出口温度",
-        data: Array.from({length: dataPointCount}, (_, i) => 700 + Math.cos(i * 0.3) * 80 + Math.random() * 40)
       },
       {
         name: "风扇出口总压",
@@ -357,6 +363,10 @@
       {
         name: "喷管出口速度",
         data: Array.from({length: dataPointCount}, (_, i) => 1245 + Math.sin(i * 0.6) * 200 + Math.random() * 100)
+      },
+      {
+        name: "time",
+        data: Array.from({length: dataPointCount}, (_, i) => i * 0.025) // 使用固定的时间步长
       }
     ];
     
@@ -380,7 +390,7 @@
       console.log(`处理图表 ${chart.name} (ID: ${chart.id})，曲线:`, chart.curves.map(c => c.name));
       
       // 按照要求的格式构建data_chart_{id}
-      // 格式：[[time,series1,series2,series3],...]
+      // 格式：[{name:"曲线图-1";data:[[time,series1,series2,series3],...]}]
       const chartDataPoints: number[][] = [];
       
       // 为每个时间点生成数据行：[time, series1, series2, series3, ...]
@@ -404,14 +414,21 @@
         chartDataPoints.push(dataRow);
       }
       
+      // 构建最终的data_chart_{id}格式
+      const data_chart = {
+        name: chart.name,
+        data: chartDataPoints
+      };
+      
       console.log(`data_chart_${chart.id} 生成完成:`, {
-        dataLength: chartDataPoints.length,
-        sampleData: chartDataPoints.slice(0, 3), // 显示前3个数据点作为示例
+        name: data_chart.name,
+        dataLength: data_chart.data.length,
+        sampleData: data_chart.data.slice(0, 3), // 显示前3个数据点作为示例
         format: '[[time, series1, series2, ...], ...]'
       });
       
       // 更新数据集
-      chartDataSets.set(chart.id, chartDataPoints);
+      chartDataSets.set(chart.id, data_chart);
     });
     
     // 触发响应式更新
@@ -422,28 +439,41 @@
     logAllDataCharts();
   }
 
-  // 初始化图表数据
-  function initializeChartData(chartId: number) {
-    chartDataSets.set(chartId, []);
+  // 更新监控表格数据
+  function updateMonitorTableData(dataOutResult: Array<{name: string, data: number[]}>) {
+    monitorTableData = dataOutResult
+      .filter(item => item.name !== "time")
+      .map(item => ({
+        parameter: item.name,
+        value: item.data.length > 0 ? item.data[item.data.length - 1].toFixed(3) : '0.000' // 取最后一个时间点的值
+      }));
   }
 
-  // 处理曲线图变化 - 重新遍历curveCharts，并更新data_chart_{curveCharts.id}和uplot图表展示
+  // 初始化图表数据
+  function initializeChartData(chartId: number) {
+    const chart = curveCharts.find(c => c.id === chartId);
+    if (chart) {
+      chartDataSets.set(chartId, {
+        name: chart.name,
+        data: []
+      });
+    }
+  }
+
+  // 处理曲线图变化
   function handleChartsChange(newCharts: typeof curveCharts) {
     curveCharts = newCharts;
-    console.log('曲线图配置发生变化，重新遍历curveCharts并更新data_chart');
-    
     // 为新图表初始化数据
     curveCharts.forEach(chart => {
       if (!chartDataSets.has(chart.id)) {
         initializeChartData(chart.id);
       }
     });
-    
-    // 如果已有dataOut数据，重新转换为data_chart格式
-    if (dataOut.length > 0) {
-      console.log('重新从dataOut转换data_chart数据');
-      updateDataChartsFromDataOut(dataOut);
-    }
+  }
+
+  // 打开监控弹窗
+  function openMonitorModal() {
+    showMonitorModal = true;
   }
 
   // 计算函数 - 实现dataIn和dataOut数据格式处理
@@ -483,6 +513,7 @@
           
           // 4. 核心步骤：从dataOut转换为data_chart_{id}格式，然后传给uPlot
           updateDataChartsFromDataOut(validDataOut);
+          updateMonitorTableData(validDataOut);
           
           console.log('步骤4 - data_chart转换完成，验证数据:');
           curveCharts.forEach(chart => {
@@ -499,6 +530,8 @@
       
       // 显示结果界面
       showResults = true;
+      // 自动显示监控弹窗
+      showMonitorModal = true;
       
       // 为所有现有图表初始化数据
       curveCharts.forEach(chart => {
@@ -665,89 +698,105 @@
         </div>
       </div>
     {:else}
-      <!-- 计算结果界面 - 删除右侧控制面板，只保留左侧曲线组面板和中间图表区域 -->
-      <div class="flex h-full gap-4">
-        <!-- 左侧曲线组面板 - 使用封装的组件 -->
-        <CurveChartManager 
-          bind:charts={curveCharts}
-          leftParameters={leftParameterList}
-          rightParameters={rightParameterList}
-          onChartsChange={handleChartsChange}
-        />
+      <!-- 计算结果界面 - 删除右侧控制面板 -->
+      <div class="w-full max-w-[95%] mx-auto h-full">
+        <div class="flex h-full gap-4">
+          <!-- 左侧曲线组面板 - 使用封装的组件 -->
+          <CurveChartManager 
+            bind:charts={curveCharts}
+            leftParameters={leftParameterList}
+            rightParameters={rightParameterList}
+            onChartsChange={handleChartsChange}
+          />
 
-        <!-- 右侧图表区域 - 占据剩余空间 -->
-        <div class="flex-1 flex flex-col">
-          <!-- 顶部控制栏 -->
-          <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-4">
-            <div class="flex justify-between items-center">
-              <!-- 左侧：计算状态和数据流验证信息 -->
-              <div class="flex items-center gap-4">
+          <!-- 右侧图表区域 - 占据剩余空间 -->
+          <div class="flex-1 flex flex-col">
+            <!-- 顶部控制栏 -->
+            <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-4">
+              <div class="flex justify-between items-center">
+                <!-- 左侧：计算状态和数据流验证信息 -->
+                <div class="flex items-center gap-4">
+                  <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span class="text-sm text-gray-300">过渡态计算完成</span>
+                  </div>
+                  <div class="text-xs text-gray-400">
+                    数据点数: {csvData.length > 0 ? csvData[0].length - 1 : 0}
+                  </div>
+                  <div class="text-xs text-gray-400">
+                    文件: {selectedFile?.name || '未知'}
+                  </div>
+                  <div class="text-xs text-blue-400">
+                    数据流: CSV → dataIn → 后端 → dataOut → data_chart_{'{id}'} → uPlot
+                  </div>
+                </div>
+                
+                <!-- 右侧：控制按钮 -->
                 <div class="flex items-center gap-2">
-                  <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span class="text-sm text-gray-300">过渡态计算完成</span>
+                  <button
+                    class="px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded transition-colors"
+                    onclick={() => showResults = false}
+                  >
+                    返回编辑
+                  </button>
+                  <button
+                    class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded transition-colors"
+                    onclick={openMonitorModal}
+                  >
+                    监控
+                  </button>
+                  <button
+                    class="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded transition-colors"
+                    onclick={logAllDataCharts}
+                  >
+                    调试数据
+                  </button>
                 </div>
-                <div class="text-xs text-gray-400">
-                  数据点数: {csvData.length > 0 ? csvData[0].length - 1 : 0}
-                </div>
-                <div class="text-xs text-gray-400">
-                  文件: {selectedFile?.name || '未知'}
-                </div>
-                <div class="text-xs text-blue-400">
-                  数据流: CSV → dataIn → 后端 → dataOut → data_chart_{'{id}'} → uPlot
-                </div>
-              </div>
-              
-              <!-- 右侧：控制按钮 -->
-              <div class="flex items-center gap-2">
-                <button
-                  class="px-3 py-1 bg-gray-600 hover:bg-gray-700 text-white text-sm rounded transition-colors"
-                  onclick={() => showResults = false}
-                >
-                  返回编辑
-                </button>
-                <button
-                  class="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded transition-colors"
-                  onclick={logAllDataCharts}
-                >
-                  调试数据
-                </button>
               </div>
             </div>
-          </div>
 
-          <!-- 图表显示区域 -->
-          <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg p-4 overflow-y-auto">
-            <div class="grid grid-cols-1 gap-6">
-              {#each curveCharts as chart (chart.id)}
-                <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-lg">
-                  <!-- 图表标题 - 显示data_chart信息 -->
-                  <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-semibold text-gray-200 flex items-center gap-2">
-                      <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                      </svg>
-                      {chart.name}
-                    </h3>
-                    <div class="text-xs text-gray-400">
-                      data_chart_{chart.id}: {chartDataSets.get(chart.id)?.length || 0} 点
+            <!-- 图表显示区域 -->
+            <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg p-4 overflow-y-auto">
+              <div class="grid grid-cols-1 gap-6">
+                {#each curveCharts as chart (chart.id)}
+                  <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 shadow-lg">
+                    <!-- 图表标题 - 显示data_chart信息 -->
+                    <div class="flex justify-between items-center mb-4">
+                      <h3 class="text-lg font-semibold text-gray-200 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                        {chart.name}
+                      </h3>
+                      <div class="text-xs text-gray-400">
+                        data_chart_{chart.id}: {chartDataSets.get(chart.id)?.data.length || 0} 点
+                      </div>
+                    </div>
+
+                    <!-- uPlot图表容器 -->
+                    <div class="bg-gray-900 rounded-lg p-4 border border-gray-600">
+                      <UPlotChart 
+                        chartId={chart.id}
+                        chartName={chart.name}
+                        curves={chart.curves}
+                        data={chartDataSets.get(chart.id)?.data || []}
+                      />
                     </div>
                   </div>
-
-                  <!-- uPlot图表容器 -->
-                  <div class="bg-gray-900 rounded-lg p-4 border border-gray-600">
-                    <UPlotChart 
-                      chartId={chart.id}
-                      chartName={chart.name}
-                      curves={chart.curves}
-                      data={chartDataSets.get(chart.id) || []}
-                    />
-                  </div>
-                </div>
-              {/each}
+                {/each}
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      <!-- 实时监控弹窗 - 使用封装的组件 -->
+      <RealTimeMonitor 
+        bind:isVisible={showMonitorModal}
+        bind:position={monitorModalPosition}
+        bind:size={monitorModalSize}
+        data={monitorTableData}
+      />
     {/if}
   </div>
 </div>
