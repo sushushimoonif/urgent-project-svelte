@@ -15,11 +15,7 @@ export default {
           blue: '#3b82f6',
           purple: '#8b5cf6',
           red: '#ef4444',
-        },
-        'tab-selected': '#8b5cf6',
-        'tab-bg': '#4b5563',
-        'label-color': '#f3f4f6',
-        'input-bg': '#374151',
+        }
       },
       spacing: {
         '18': '4.5rem',
