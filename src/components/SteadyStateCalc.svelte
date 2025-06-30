@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { pageData } from './stores/pageData';
+  import { pageData } from './stores/pageData'; // 路径按你的目录调整
   import { invoke } from '@tauri-apps/api/tauri';
 
   // 参数名称映射
@@ -13,12 +13,12 @@
     "油门杆角度": { range: '(0~115)', unit: '度' }
   };
 
-  // store订阅
-  let data;
-  $: pageData.subscribe(v => data = v);
-
   let isCalculating = false;
   let showResults = true;
+
+  // 订阅 store
+  let data;
+  $: pageData.subscribe(v => data = v);
 
   // 按钮事件
   function selectSimulationStep(step: string) {
@@ -124,7 +124,6 @@
   }
 </script>
 
-
 <div class="h-[calc(100vh-120px)] bg-gray-900 p-4 sm:p-6 lg:p-8">
   <div class="w-full max-w-[95%] mx-auto h-full">
     <div class="flex h-full gap-4">
@@ -135,14 +134,14 @@
           <!-- 仿真步长按钮 -->
           <div class="flex">
             <button 
-              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedSimulationStep === '0.025' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-              on:click={() => setSimulationStep('0.025')}
+              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {data.selectedSimulationStep === '0.025' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+              on:click={() => selectSimulationStep('0.025')}
             >
               仿真步长<br>0.025秒
             </button>
             <button 
-              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedSimulationStep === '0.0125' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-              on:click={() => setSimulationStep('0.0125')}
+              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {data.selectedSimulationStep === '0.0125' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+              on:click={() => selectSimulationStep('0.0125')}
             >
               仿真步长<br>0.0125秒
             </button>
@@ -151,14 +150,14 @@
           <!-- 作战/训练 -->
           <div class="flex">
             <button 
-              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedMode === '作战' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-              on:click={() => setMode('作战')}
+              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {data.selectedMode === '作战' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+              on:click={() => selectMode('作战')}
             >
               作战
             </button>
             <button 
-              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedMode === '训练' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-              on:click={() => setMode('训练')}
+              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {data.selectedMode === '训练' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+              on:click={() => selectMode('训练')}
             >
               训练
             </button>
@@ -167,14 +166,14 @@
           <!-- 地面/空中 -->
           <div class="flex">
             <button 
-              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedEnvironment === '地面' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-              on:click={() => setEnvironment('地面')}
+              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {data.selectedEnvironment === '地面' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+              on:click={() => selectEnvironment('地面')}
             >
               地面
             </button>
             <button 
-              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {selectedEnvironment === '空中' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
-              on:click={() => setEnvironment('空中')}
+              class="flex-1 px-2 py-1 text-xs font-medium transition-colors {data.selectedEnvironment === '空中' ? 'bg-purple-600 text-white' : 'bg-gray-600 text-gray-300 hover:bg-gray-500'}"
+              on:click={() => selectEnvironment('空中')}
             >
               空中
             </button>
@@ -214,8 +213,62 @@
         </div>
       </div>
 
-      <!-- 右侧两张表格 -->
-      <!-- ...（表格代码保持不变）... -->
+      <!-- 右侧两张表格 --->
+      <div class="flex-1 flex gap-4">
+        <!-- 第一张表格：仿真步长 + 15个虚拟数据 -->
+        <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+          {#if showResults}
+            <div class="h-full flex flex-col">
+              <div class="flex-1 overflow-auto">
+                <table class="w-full text-sm">
+                  <!-- 表头 -->
+                  <thead class="bg-gray-700 sticky top-0">
+                    <tr>
+                      <th class="px-4 py-3 text-left font-medium text-gray-200 border-r border-gray-600">名称</th>
+                      <th class="w-32 px-4 py-3 text-center font-medium text-gray-200">数值</th>
+                    </tr>
+                  </thead>
+                  
+                  <!-- 数据行 -->
+                  <tbody>
+                    {#each data.dataOut.slice(0, 16) as param, index}
+                      <tr class="border-b border-gray-600 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
+                        <td class="px-4 py-3 text-gray-300 border-r border-gray-600">{param.name}</td>
+                        <td class="w-32 px-4 py-3 text-center text-white font-mono">{formatDisplayValue(param)}</td>
+                      </tr>
+                    {/each}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          {/if}
+        </div>
+        <!-- 第二张表格：16个虚拟数据 -->
+        <div class="flex-1 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+          {#if showResults}
+            <div class="h-full flex flex-col">
+              <div class="flex-1 overflow-auto">
+                <table class="w-full text-sm">
+                  <thead class="bg-gray-700 sticky top-0">
+                    <tr>
+                      <th class="px-4 py-3 text-left font-medium text-gray-200 border-r border-gray-600">名称</th>
+                      <th class="w-32 px-4 py-3 text-center font-medium text-gray-200">数值</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {#each data.dataOut.slice(16, 32) as param, index}
+                      <tr class="border-b border-gray-600 hover:bg-gray-750 transition-colors {index % 2 === 0 ? 'bg-gray-800' : 'bg-gray-850'}">
+                        <td class="px-4 py-3 text-gray-300 border-r border-gray-600">{param.name}</td>
+                        <td class="w-32 px-4 py-3 text-center text-white font-mono">{formatDisplayValue(param)}</td>
+                      </tr>
+                    {/each}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          {/if}
+        </div>
+      </div>
     </div>
   </div>
 </div>
