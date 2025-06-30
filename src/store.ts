@@ -1,44 +1,13 @@
-// stores.ts
+// src/stores/pageData.ts
 import { writable } from 'svelte/store';
 import { appCacheDir } from '@tauri-apps/api/path';
 import { readTextFile, writeFile, exists } from '@tauri-apps/api/fs';
 
+// 缓存文件名
 const CACHE_FILE_NAME = 'pageDataCache.json';
 
-function createPersistentStore(initialValue: any) {
-  const store = writable(initialValue);
-
-  async function load() {
-    try {
-      const cacheDir = await appCacheDir();
-      const filePath = `${cacheDir}/${CACHE_FILE_NAME}`;
-      if (await exists(filePath)) {
-        const content = await readTextFile(filePath);
-        const data = JSON.parse(content);
-        store.set(data);
-      }
-    } catch (e) {
-      console.warn('读取缓存数据失败，使用初始值', e);
-    }
-  }
-
-  store.subscribe(async (value) => {
-    try {
-      const cacheDir = await appCacheDir();
-      const filePath = `${cacheDir}/${CACHE_FILE_NAME}`;
-      await writeFile({ path: filePath, contents: JSON.stringify(value) });
-    } catch (e) {
-      console.error('写入缓存数据失败', e);
-    }
-  });
-
-  load();
-
-  return store;
-}
-
-// 你的初始状态，和 paste.txt 中的 dataIN、dataOut、selectedSimulationStep 等保持一致
-export const pageData = createPersistentStore({
+// 初始数据（和 paste.txt 中一致）
+const initialData = {
   dataIN: [
     { name: "仿真步长", data: [0.025] },
     { name: "高度", data: [0.0] },
@@ -90,4 +59,40 @@ export const pageData = createPersistentStore({
   selectedSimulationStep: '0.025',
   selectedMode: '作战',
   selectedEnvironment: '地面'
-});
+};
+
+function createPersistentStore() {
+  const store = writable(initialData);
+
+  // 异步读取缓存
+  async function load() {
+    try {
+      const cacheDir = await appCacheDir();
+      const filePath = `${cacheDir}/${CACHE_FILE_NAME}`;
+      if (await exists(filePath)) {
+        const content = await readTextFile(filePath);
+        const data = JSON.parse(content);
+        store.set(data);
+      }
+    } catch (e) {
+      // 读取失败用初始值
+    }
+  }
+
+  // 订阅数据变化写入缓存
+  store.subscribe(async (value) => {
+    try {
+      const cacheDir = await appCacheDir();
+      const filePath = `${cacheDir}/${CACHE_FILE_NAME}`;
+      await writeFile({ path: filePath, contents: JSON.stringify(value) });
+    } catch (e) {
+      // 写入失败忽略
+    }
+  });
+
+  load();
+
+  return store;
+}
+
+export const pageData = createPersistentStore();
