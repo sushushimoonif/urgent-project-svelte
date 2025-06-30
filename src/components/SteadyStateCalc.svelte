@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { pageData } from './stores/pageData'; // 路径按你的目录调整
+  import { pageData } from './src/store'; // 路径按你的目录调整
   import { invoke } from '@tauri-apps/api/tauri';
 
   // 参数名称映射
