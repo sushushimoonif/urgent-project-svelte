@@ -2,8 +2,8 @@
   import CurveChartManager from './CurveChartManager.svelte';
   import RealTimeMonitor from './RealTimeMonitor.svelte';
   import UPlotChart from './UPlotChart.svelte';
-    import SwitcherGroup from "@/components/SwitcherGroup/SwitcherGroup.svelte";
-    import ParamsInputGroup from "@/components/ParamsInputGroup/ParamsInputGroup.svelte";
+    import SwitcherGroup from "./SwitcherGroup.svelte";
+    import ParamsInputGroup from "./ParamsInputGroup.svelte";
 
     import { invoke } from "@tauri-apps/api/core";
 
