@@ -75,6 +75,26 @@ body {
   background-color: #1f2937;
 }
 
+/* uPlot选择框样式覆盖 - 使用全局CSS确保优先级 */
+.uplot .u-select {
+  background: rgba(128, 128, 128, 0.8) !important;
+  border: 1px solid rgba(128, 128, 128, 0.9) !important;
+  z-index: 1000 !important;
+  pointer-events: none !important;
+}
+
+/* 确保在所有可能的选择器下都应用灰色样式 */
+.u-select {
+  background: rgba(128, 128, 128, 0.8) !important;
+  border: 1px solid rgba(128, 128, 128, 0.9) !important;
+}
+
+/* 针对可能的嵌套情况 */
+div.u-select {
+  background: rgba(128, 128, 128, 0.8) !important;
+  border: 1px solid rgba(128, 128, 128, 0.9) !important;
+}
+
 /* 图表样式 */
 .chart-container {
   background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
