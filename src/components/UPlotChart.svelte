@@ -20,6 +20,7 @@
   let uPlot: any = null;
   let isLoading = $state(true);
   let loadError = $state(false);
+  let isFullscreen = $state(false);
 
   // Tooltip状态 - 修改位置为鼠标左上方，半透明度改为70%
   let showTooltip = $state(false);
@@ -41,6 +42,24 @@
     "#8b5cf6", // 紫色
     "#f97316", // 橙色
   ];
+
+  // 全屏切换函数
+  function toggleFullscreen() {
+    isFullscreen = !isFullscreen;
+    
+    // 延迟调整图表大小，确保容器尺寸已更新
+    setTimeout(() => {
+      if (uplot && chartContainer) {
+        const newWidth = isFullscreen ? window.innerWidth - 100 : chartContainer.clientWidth;
+        const newHeight = isFullscreen ? window.innerHeight - 200 : 300;
+        
+        uplot.setSize({
+          width: newWidth,
+          height: newHeight
+        });
+      }
+    }, 100);
+  }
 
   // 动态加载uPlot库
   async function loadUPlot() {
@@ -143,8 +162,8 @@
     // uPlot配置
     const opts = {
       // title: chartName,
-      width: chartContainer.clientWidth || 800,
-      height: 300,
+      width: isFullscreen ? window.innerWidth - 100 : (chartContainer.clientWidth || 800),
+      height: isFullscreen ? window.innerHeight - 200 : 300,
       series: series,
       axes: [
   {
@@ -362,9 +381,12 @@
   // 窗口大小变化时重新调整图表大小
   function handleResize() {
     if (uplot && chartContainer) {
+      const newWidth = isFullscreen ? window.innerWidth - 100 : chartContainer.clientWidth;
+      const newHeight = isFullscreen ? window.innerHeight - 200 : 300;
+      
       uplot.setSize({
-        width: chartContainer.clientWidth,
-        height: 300,
+        width: newWidth,
+        height: newHeight
       });
     }
   }
@@ -392,11 +414,87 @@
   <link rel="stylesheet" href="/lib/uPlot.min.css" />
 </svelte:head>
 
-<div class="w-full h-full relative">
+<!-- 全屏模态框 -->
+{#if isFullscreen}
+  <div class="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-8">
+    <div class="w-full h-full bg-gray-900 rounded-lg border border-gray-600 relative">
+      <!-- 全屏模式下的标题栏 -->
+      <div class="flex justify-between items-center p-4 border-b border-gray-700">
+        <h3 class="text-xl font-semibold text-gray-200 flex items-center gap-2">
+          <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+          </svg>
+          {chartName} - 全屏查看
+        </h3>
+        <button 
+          class="text-gray-400 hover:text-gray-200 p-2 rounded-lg hover:bg-gray-700 transition-colors"
+          onclick={toggleFullscreen}
+          title="退出全屏"
+        >
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+      
+      <!-- 全屏图表容器 -->
+      <div class="p-4 h-full">
+        <div
+          bind:this={chartContainer}
+          class="w-full h-full bg-gray-900 rounded border border-gray-600 relative"
+        >
+          {#if isLoading}
+            <div class="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-900 rounded">
+              <div class="text-center">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                <p class="text-lg">加载图表中...</p>
+              </div>
+            </div>
+          {:else if loadError}
+            <div class="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-900 rounded">
+              <div class="text-center">
+                <div class="text-red-500 text-4xl mb-4">⚠️</div>
+                <p class="text-lg">图表加载失败</p>
+                <button 
+                  class="mt-4 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded"
+                  onclick={() => loadUPlot()}
+                >
+                  重试
+                </button>
+              </div>
+            </div>
+          {:else if !uplot}
+            <div class="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-900 rounded">
+              <div class="text-center">
+                <div class="text-gray-500 text-4xl mb-4">📊</div>
+                <p class="text-lg">准备图表中...</p>
+              </div>
+            </div>
+          {/if}
+        </div>
+      </div>
+    </div>
+  </div>
+{:else}
+  <!-- 正常模式 -->
+  <div class="w-full h-full relative">
+    <!-- 放大缩小按钮 - 右上角悬浮 -->
+    <div class="absolute top-2 right-2 z-10 flex gap-1">
+      <button 
+        class="w-8 h-8 bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded text-gray-300 hover:text-white transition-colors flex items-center justify-center shadow-lg"
+        onclick={toggleFullscreen}
+        title="全屏查看"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+        </svg>
+      </button>
+    </div>
+
   <!-- 图表容器 -->
   <div
     bind:this={chartContainer}
-    class="w-full h-80 bg-container-bg rounded border border-gray-600 relative"
+    class="w-full h-80 bg-gray-900 rounded border border-gray-600 relative"
     style="min-height: 300px;"
   >
     {#if isLoading}
@@ -475,6 +573,5 @@
       </div>
     </div>
   {/if}
-
-  <!-- 删除图表信息栏（数据点、显示窗口、曲线数等信息） -->
-</div>
+  </div>
+{/if}
