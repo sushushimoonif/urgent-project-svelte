@@ -273,19 +273,21 @@
       hooks: {
         init: [
           (u: any) => {
-            // 创建选择框元素
-            const selectDiv = document.createElement('div');
-            selectDiv.className = 'u-select';
-            selectDiv.style.cssText = `
-              position: absolute;
-              background: rgba(59, 130, 246, 0.2);
-              border: 1px solid rgba(59, 130, 246, 0.5);
-              pointer-events: none;
-              display: none;
-              z-index: 100;
-            `;
-            u.over.appendChild(selectDiv);
-            u.selectDiv = selectDiv;
+            console.log(`init hook: 图表 ${chartName} 初始化`);
+            // uPlot会自动创建选择框，我们通过CSS来控制样式
+          }
+        ],
+        ready: [
+          (u: any) => {
+            console.log(`ready hook: 图表 ${chartName} 准备就绪`);
+            // 图表准备就绪后，强制应用灰色遮罩样式
+            setTimeout(() => {
+              const selectDiv = u.root.querySelector('.u-select');
+              if (selectDiv) {
+                selectDiv.style.background = 'rgba(128, 128, 128, 0.8)';
+                selectDiv.style.border = '1px solid rgba(128, 128, 128, 0.9)';
+              }
+            }, 100);
           }
         ],
         setSelect: [
@@ -293,20 +295,35 @@
             const select = u.select;
             const { left, top, width, height } = select;
             
-            // 更新选择框显示
-            if (u.selectDiv) {
-              if (width > 0 && height > 0) {
-                u.selectDiv.style.display = 'block';
-                u.selectDiv.style.left = left + 'px';
-                u.selectDiv.style.top = u.bbox.top + 'px';  // Y轴从图表顶部开始
-                u.selectDiv.style.width = width + 'px';
-                u.selectDiv.style.height = u.bbox.height + 'px';  // Y轴占满整个图表高度
-              } else {
-                u.selectDiv.style.display = 'none';
-              }
+            console.log(`setSelect hook: 图表 ${chartName} 选择操作`, { width, height });
+            
+            // 强制应用中性灰色样式到选择框
+            const selectDiv = u.root.querySelector('.u-select');
+            if (selectDiv) {
+              selectDiv.style.background = 'rgba(128, 128, 128, 0.8)';
+              selectDiv.style.border = '1px solid rgba(128, 128, 128, 0.9)';
+              selectDiv.style.zIndex = '1000';
+              selectDiv.style.pointerEvents = 'none';
+              
+              // 使用多个延迟来确保样式被持续应用，对抗uPlot的样式覆盖
+              [5, 10, 20, 50, 100, 200].forEach(delay => {
+                setTimeout(() => {
+                  const currentSelectDiv = u.root.querySelector('.u-select');
+                  if (currentSelectDiv) {
+                    currentSelectDiv.style.background = 'rgba(128, 128, 128, 0.8)';
+                    currentSelectDiv.style.border = '1px solid rgba(128, 128, 128, 0.9)';
+                  }
+                }, delay);
+              });
             }
             
             if (width > 10) { // 最小选择宽度
+              // 立即隐藏选择遮罩，避免移动效果
+              const selectDiv = u.root.querySelector('.u-select');
+              if (selectDiv) {
+                selectDiv.style.display = 'none';
+              }
+              
               // 保存原始范围（如果还没保存的话）
               if (!isZoomed) {
                 const xScale = u.scales.x;
@@ -321,9 +338,8 @@
               // 只缩放X轴，Y轴保持自动调整
               u.setScale('x', { min: xMin, max: xMax });
               
-              // 隐藏选择框
-              if (u.selectDiv) {
-                u.selectDiv.style.display = 'none';
+              // 立即清除选择状态，不使用延迟
+              u.setSelect({ left: 0, top: 0, width: 0, height: 0 }, false);
               }
               
               console.log(`图表 ${chartName} 缩放到X轴范围: [${xMin.toFixed(2)}, ${xMax.toFixed(2)}]`);
@@ -509,6 +525,21 @@
 <!-- uPlot CSS样式 -->
 <svelte:head>
   <link rel="stylesheet" href="/lib/uPlot.min.css" />
+  <style>
+    /* 强制覆盖uPlot选择框样式为中性灰色 */
+    .u-select {
+      background: rgba(128, 128, 128, 0.8) !important;
+      border: 1px solid rgba(128, 128, 128, 0.9) !important;
+      z-index: 1000 !important;
+      pointer-events: none !important;
+    }
+    
+    /* 确保在所有状态下都应用中性灰色样式 */
+    .uplot .u-select {
+      background: rgba(128, 128, 128, 0.8) !important;
+      border: 1px solid rgba(128, 128, 128, 0.9) !important;
+    }
+  </style>
 </svelte:head>
 
 <!-- 全屏模态框 -->
