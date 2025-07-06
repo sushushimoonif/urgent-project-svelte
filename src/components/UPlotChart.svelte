@@ -16,6 +16,7 @@
   let { chartId, chartName, curves, data, xRange }: Props = $props();
 
   let chartContainer: HTMLDivElement;
+  let fullscreenChartContainer: HTMLDivElement;
   let uplot: any = null;
   let uPlot: any = null;
   let isLoading = $state(true);
@@ -47,24 +48,11 @@
   function toggleFullscreen() {
     isFullscreen = !isFullscreen;
     
-    // 延迟调整图表大小，确保容器尺寸已更新
+    // 延迟重新初始化图表，确保容器准备好
     setTimeout(() => {
-      if (uplot && chartContainer) {
-        const newWidth = isFullscreen ? window.innerWidth - 150 : chartContainer.clientWidth;
-        const newHeight = isFullscreen ? window.innerHeight - 200 : 300;
-        
-        uplot.setSize({
-          width: newWidth,
-          height: newHeight
-        });
-        
-        // 强制重新渲染图表
-        if (isFullscreen && data && data.length > 0) {
-          const transformedData = transformDataForUPlot(data);
-          uplot.setData(transformedData);
-        }
-      }
-    }, 200);
+      // 重新初始化图表以适应新容器
+      initChart();
+    }, 300);
   }
 
   // 动态加载uPlot库
@@ -136,8 +124,11 @@
 
   // 初始化图表
   function initChart() {
-    if (!uPlot || !chartContainer) {
-      console.log("uPlot或容器未准备好");
+    // 根据当前模式选择正确的容器
+    const currentContainer = isFullscreen ? fullscreenChartContainer : chartContainer;
+    
+    if (!uPlot || !currentContainer) {
+      console.log("uPlot或容器未准备好", { uPlot: !!uPlot, container: !!currentContainer, isFullscreen });
       return;
     }
 
@@ -168,7 +159,7 @@
     // uPlot配置
     const opts = {
       // title: chartName,
-      width: isFullscreen ? window.innerWidth - 150 : (chartContainer.clientWidth || 800),
+      width: isFullscreen ? window.innerWidth - 100 : (currentContainer.clientWidth || 800),
       height: isFullscreen ? window.innerHeight - 200 : 300,
       series: series,
       axes: [
@@ -306,8 +297,8 @@
     try {
       // 创建uPlot实例
       const transformedData = transformDataForUPlot(data);
-      uplot = new uPlot(opts, transformedData, chartContainer);
-      console.log(`图表 ${chartName} 初始化成功，数据点数: ${data.length}`);
+      uplot = new uPlot(opts, transformedData, currentContainer);
+      console.log(`图表 ${chartName} 初始化成功，数据点数: ${data.length}, 全屏模式: ${isFullscreen}`);
       isLoading = false;
     } catch (error) {
       console.error(`图表 ${chartName} 初始化失败:`, error);
@@ -386,8 +377,11 @@
 
   // 窗口大小变化时重新调整图表大小
   function handleResize() {
-    if (uplot && chartContainer) {
-      const newWidth = isFullscreen ? window.innerWidth - 150 : chartContainer.clientWidth;
+    if (uplot) {
+      const currentContainer = isFullscreen ? fullscreenChartContainer : chartContainer;
+      if (!currentContainer) return;
+      
+      const newWidth = isFullscreen ? window.innerWidth - 100 : currentContainer.clientWidth;
       const newHeight = isFullscreen ? window.innerHeight - 200 : 300;
       
       uplot.setSize({
@@ -446,7 +440,7 @@
       <!-- 全屏图表容器 -->
       <div class="p-4" style="height: calc(100% - 80px);">
         <div
-          bind:this={chartContainer}
+          bind:this={fullscreenChartContainer}
           class="w-full bg-gray-900 rounded border border-gray-600 relative"
           style="height: calc(100vh - 200px);"
         >
@@ -475,6 +469,7 @@
               <div class="text-center">
                 <div class="text-gray-500 text-4xl mb-4">📊</div>
                 <p class="text-lg">准备图表中...</p>
+                <p class="text-sm text-gray-500 mt-2">数据点: {data?.length || 0}</p>
               </div>
             </div>
           {/if}
