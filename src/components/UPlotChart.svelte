@@ -50,15 +50,21 @@
     // 延迟调整图表大小，确保容器尺寸已更新
     setTimeout(() => {
       if (uplot && chartContainer) {
-        const newWidth = isFullscreen ? window.innerWidth - 100 : chartContainer.clientWidth;
+        const newWidth = isFullscreen ? window.innerWidth - 150 : chartContainer.clientWidth;
         const newHeight = isFullscreen ? window.innerHeight - 200 : 300;
         
         uplot.setSize({
           width: newWidth,
           height: newHeight
         });
+        
+        // 强制重新渲染图表
+        if (isFullscreen && data && data.length > 0) {
+          const transformedData = transformDataForUPlot(data);
+          uplot.setData(transformedData);
+        }
       }
-    }, 100);
+    }, 200);
   }
 
   // 动态加载uPlot库
@@ -162,7 +168,7 @@
     // uPlot配置
     const opts = {
       // title: chartName,
-      width: isFullscreen ? window.innerWidth - 100 : (chartContainer.clientWidth || 800),
+      width: isFullscreen ? window.innerWidth - 150 : (chartContainer.clientWidth || 800),
       height: isFullscreen ? window.innerHeight - 200 : 300,
       series: series,
       axes: [
@@ -381,7 +387,7 @@
   // 窗口大小变化时重新调整图表大小
   function handleResize() {
     if (uplot && chartContainer) {
-      const newWidth = isFullscreen ? window.innerWidth - 100 : chartContainer.clientWidth;
+      const newWidth = isFullscreen ? window.innerWidth - 150 : chartContainer.clientWidth;
       const newHeight = isFullscreen ? window.innerHeight - 200 : 300;
       
       uplot.setSize({
@@ -438,10 +444,11 @@
       </div>
       
       <!-- 全屏图表容器 -->
-      <div class="p-4 h-full">
+      <div class="p-4" style="height: calc(100% - 80px);">
         <div
           bind:this={chartContainer}
-          class="w-full h-full bg-gray-900 rounded border border-gray-600 relative"
+          class="w-full bg-gray-900 rounded border border-gray-600 relative"
+          style="height: calc(100vh - 200px);"
         >
           {#if isLoading}
             <div class="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-900 rounded">
