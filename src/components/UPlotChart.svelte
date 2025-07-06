@@ -339,10 +339,10 @@
               showTooltip = true;
 
               // 计算tooltip位置（小框的左上方为鼠标位置）
-              const rect = chartContainer.getBoundingClientRect();
+              const rect = u.root.getBoundingClientRect();
               tooltipPosition = {
-                x: left, // 鼠标X位置作为小框左上角
-                y: top, // 鼠标Y位置作为小框左上角
+                x: left + rect.left, // 鼠标X位置作为小框左上角
+                y: top + rect.top, // 鼠标Y位置作为小框左上角
               };
 
               // 构建tooltip数据
