@@ -592,24 +592,10 @@
   // 响应式更新曲线配置
   $effect(() => {
     if (curves && uplot) {
-            // 每次选择操作时，立即强制应用灰色样式
-            setTimeout(() => {
-              const selectDivs = u.root.querySelectorAll('.u-select');
-              selectDivs.forEach((selectDiv: HTMLElement) => {
-                forceApplyGrayMaskStyles(selectDiv);
-                console.log('📦 setSelect: 选择操作中，立即应用灰色遮罩');
-              });
-              
-              // 使用多个延迟来确保样式被持续应用
-              [10, 50, 100, 200, 500].forEach(delay => {
-                setTimeout(() => {
-                  const currentSelectDivs = u.root.querySelectorAll('.u-select');
-                  currentSelectDivs.forEach((selectDiv: HTMLElement) => {
-                    forceApplyGrayMaskStyles(selectDiv);
-                    console.log(`⏰ 延迟${delay}ms: 重新应用灰色遮罩`);
-                  });
-                }, delay);
-              });
+      initChart();
+    }
+  });
+
   function handleResize() {
     if (uplot) {
       const currentContainer = isFullscreen ? fullscreenChartContainer : chartContainer;
