@@ -5,7 +5,7 @@
     import SwitcherGroup from "./SwitcherGroup.svelte";
     import ParamsInputGroup from "./ParamsInputGroup.svelte";
 
-    import { invoke } from "@tauri-apps/api/core";
+    import { invoke } from "@tauri-apps/api/tauri";
 
     let isCalculating = $state(false);
     let isPaused = $state(false);
