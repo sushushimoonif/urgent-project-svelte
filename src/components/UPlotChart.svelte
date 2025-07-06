@@ -270,20 +270,41 @@
           },
         },
       },
-      select: {
-        show: true,      // 启用选择框
-        over: true,      // 选择框显示在图表上方
-        left: 0,
-        top: 0,
-        width: 0,
-        height: 0,
-      },
       hooks: {
+        init: [
+          (u: any) => {
+            // 创建选择框元素
+            const selectDiv = document.createElement('div');
+            selectDiv.className = 'u-select';
+            selectDiv.style.cssText = `
+              position: absolute;
+              background: rgba(59, 130, 246, 0.2);
+              border: 1px solid rgba(59, 130, 246, 0.5);
+              pointer-events: none;
+              display: none;
+              z-index: 100;
+            `;
+            u.over.appendChild(selectDiv);
+            u.selectDiv = selectDiv;
+          }
+        ],
         setSelect: [
           (u: any) => {
-            // 当用户完成框选时触发
             const select = u.select;
-            const { left, width } = select;
+            const { left, top, width, height } = select;
+            
+            // 更新选择框显示
+            if (u.selectDiv) {
+              if (width > 0 && height > 0) {
+                u.selectDiv.style.display = 'block';
+                u.selectDiv.style.left = left + 'px';
+                u.selectDiv.style.top = u.bbox.top + 'px';  // Y轴从图表顶部开始
+                u.selectDiv.style.width = width + 'px';
+                u.selectDiv.style.height = u.bbox.height + 'px';  // Y轴占满整个图表高度
+              } else {
+                u.selectDiv.style.display = 'none';
+              }
+            }
             
             if (width > 10) { // 最小选择宽度
               // 保存原始范围（如果还没保存的话）
@@ -300,9 +321,13 @@
               // 只缩放X轴，Y轴保持自动调整
               u.setScale('x', { min: xMin, max: xMax });
               
+              // 隐藏选择框
+              if (u.selectDiv) {
+                u.selectDiv.style.display = 'none';
+              }
+              
               console.log(`图表 ${chartName} 缩放到X轴范围: [${xMin.toFixed(2)}, ${xMax.toFixed(2)}]`);
             }
-            
           }
         ],
         setCursor: [
