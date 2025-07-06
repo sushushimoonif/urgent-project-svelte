@@ -149,6 +149,65 @@
       uplot = null;
     }
 
+    // 设置灰色选择遮罩的函数 - 移到这里确保每次初始化都能访问
+    function setupGraySelectionMask(u: any) {
+      // 多次尝试查找和设置选择框样式
+      const attempts = [0, 50, 100, 200, 500, 1000];
+      
+      attempts.forEach(delay => {
+        setTimeout(() => {
+          const selectDiv = u.root.querySelector('.u-select');
+          if (selectDiv) {
+            applyGrayMaskStyles(selectDiv);
+            u.selectDiv = selectDiv; // 保存引用
+            console.log(`延迟 ${delay}ms 后设置灰色遮罩样式成功`);
+          }
+        }, delay);
+      });
+    }
+
+    // 应用灰色遮罩样式的函数 - 移到这里确保每次初始化都能访问
+    function applyGrayMaskStyles(element: HTMLElement) {
+      if (!element) return;
+      
+      // 使用多种方式确保样式生效
+      element.style.setProperty('background', 'rgba(156, 163, 175, 0.8)', 'important');
+      element.style.setProperty('background-color', 'rgba(156, 163, 175, 0.8)', 'important');
+      element.style.setProperty('border', '1px solid rgba(156, 163, 175, 0.6)', 'important');
+      element.style.setProperty('z-index', '100', 'important');
+      
+      // 直接设置属性作为备用
+      element.style.background = 'rgba(156, 163, 175, 0.8)';
+      element.style.backgroundColor = 'rgba(156, 163, 175, 0.8)';
+      element.style.border = '1px solid rgba(156, 163, 175, 0.6)';
+    }
+
+    // 每次选择时应用灰色样式的函数 - 移到这里确保每次初始化都能访问
+    function applyGraySelectionStyle(u: any, select: any) {
+      const { left, top, width, height } = select;
+      
+      // 查找选择框元素
+      const selectDiv = u.root.querySelector('.u-select') || u.selectDiv;
+      
+      if (selectDiv) {
+        if (width > 0 && height > 0) {
+          // 显示选择框
+          selectDiv.style.display = 'block';
+          selectDiv.style.left = left + 'px';
+          selectDiv.style.top = u.bbox.top + 'px';
+          selectDiv.style.width = width + 'px';
+          selectDiv.style.height = u.bbox.height + 'px';
+          
+          // 每次都重新应用灰色遮罩样式
+          applyGrayMaskStyles(selectDiv);
+          
+          console.log('选择区域显示，重新应用灰色遮罩样式');
+        } else {
+          selectDiv.style.display = 'none';
+        }
+      }
+    }
+
     // 构建series配置
     const series = [
       {
@@ -283,6 +342,14 @@
             setupGraySelectionMask(u);
           }
         ],
+        setData: [
+          (u: any) => {
+            // 每次数据更新后重新设置灰色遮罩样式
+            setTimeout(() => {
+              setupGraySelectionMask(u);
+            }, 100);
+          }
+        ],
         setSelect: [
           (u: any) => {
             const select = u.select;
@@ -355,64 +422,6 @@
       },
     };
 
-    // 设置灰色选择遮罩的函数
-    function setupGraySelectionMask(u: any) {
-      // 多次尝试查找和设置选择框样式
-      const attempts = [0, 50, 100, 200, 500];
-      
-      attempts.forEach(delay => {
-        setTimeout(() => {
-          const selectDiv = u.root.querySelector('.u-select');
-          if (selectDiv) {
-            applyGrayMaskStyles(selectDiv);
-            u.selectDiv = selectDiv; // 保存引用
-            console.log(`延迟 ${delay}ms 后设置灰色遮罩样式成功`);
-          }
-        }, delay);
-      });
-    }
-
-    // 应用灰色遮罩样式的函数
-    function applyGrayMaskStyles(element: HTMLElement) {
-      if (!element) return;
-      
-      // 使用多种方式确保样式生效
-      element.style.setProperty('background', 'rgba(156, 163, 175, 0.8)', 'important');
-      element.style.setProperty('background-color', 'rgba(156, 163, 175, 0.8)', 'important');
-      element.style.setProperty('border', '1px solid rgba(156, 163, 175, 0.6)', 'important');
-      element.style.setProperty('z-index', '100', 'important');
-      
-      // 直接设置属性作为备用
-      element.style.background = 'rgba(156, 163, 175, 0.8)';
-      element.style.backgroundColor = 'rgba(156, 163, 175, 0.8)';
-      element.style.border = '1px solid rgba(156, 163, 175, 0.6)';
-    }
-
-    // 每次选择时应用灰色样式的函数
-    function applyGraySelectionStyle(u: any, select: any) {
-      const { left, top, width, height } = select;
-      
-      // 查找选择框元素
-      const selectDiv = u.root.querySelector('.u-select') || u.selectDiv;
-      
-      if (selectDiv) {
-        if (width > 0 && height > 0) {
-          // 显示选择框
-          selectDiv.style.display = 'block';
-          selectDiv.style.left = left + 'px';
-          selectDiv.style.top = u.bbox.top + 'px';
-          selectDiv.style.width = width + 'px';
-          selectDiv.style.height = u.bbox.height + 'px';
-          
-          // 每次都重新应用灰色遮罩样式
-          applyGrayMaskStyles(selectDiv);
-          
-          console.log('选择区域显示，重新应用灰色遮罩样式');
-        } else {
-          selectDiv.style.display = 'none';
-        }
-      }
-    }
     try {
       // 创建uPlot实例
       const transformedData = transformDataForUPlot(data);
@@ -498,9 +507,22 @@
         // 数据更新后重新确保灰色遮罩样式
         setTimeout(() => {
           if (uplot) {
-            setupGraySelectionMask(uplot);
+            // 重新查找并应用灰色遮罩样式
+            const selectDiv = uplot.root.querySelector('.u-select');
+            if (selectDiv) {
+              selectDiv.style.setProperty('background', 'rgba(156, 163, 175, 0.8)', 'important');
+              selectDiv.style.setProperty('background-color', 'rgba(156, 163, 175, 0.8)', 'important');
+              selectDiv.style.setProperty('border', '1px solid rgba(156, 163, 175, 0.6)', 'important');
+              selectDiv.style.setProperty('z-index', '100', 'important');
+              
+              selectDiv.style.background = 'rgba(156, 163, 175, 0.8)';
+              selectDiv.style.backgroundColor = 'rgba(156, 163, 175, 0.8)';
+              selectDiv.style.border = '1px solid rgba(156, 163, 175, 0.6)';
+              
+              console.log('数据更新后重新应用灰色遮罩样式');
+            }
           }
-        }, 200);
+        }, 50);
       }, 100); // 延迟100ms，平滑动画
 
       console.log(`图表 ${chartName} 数据更新成功，当前数据点: ${data.length}`);
