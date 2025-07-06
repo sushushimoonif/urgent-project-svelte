@@ -1,5 +1,21 @@
 <script lang="ts">
-    // [Previous code remains unchanged]
+    import { onMount } from 'svelte';
+    import RealTimeMonitor from './RealTimeMonitor.svelte';
+    
+    // Reactive state declarations for the monitor modal
+    let showMonitorModal = $state(false);
+    let monitorModalPosition = $state({ x: 100, y: 100 });
+    let monitorModalSize = $state({ width: 600, height: 400 });
+    let monitorTableData = $state([]);
+    
+    // Throttle functions for mouse events
+    function handleThrottleMouseMove(e: MouseEvent) {
+        // Implementation for mouse move handling
+    }
+    
+    function handleThrottleMouseUp() {
+        // Implementation for mouse up handling
+    }
 </script>
 
 <svelte:window
