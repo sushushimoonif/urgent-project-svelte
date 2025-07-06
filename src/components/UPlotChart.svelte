@@ -402,11 +402,13 @@
             }
             
             if (width > 10) { // 最小选择宽度
-              // 立即隐藏选择遮罩，避免移动效果
-              const selectDiv = u.root.querySelector('.u-select');
-              if (selectDiv) {
-                selectDiv.style.display = 'none';
-              }
+              // 延迟隐藏选择遮罩，让用户能看到灰色效果
+              setTimeout(() => {
+                const selectDiv = u.root.querySelector('.u-select');
+                if (selectDiv) {
+                  selectDiv.style.display = 'none';
+                }
+              }, 200);
               
               // 保存原始范围（如果还没保存的话）
               if (!isZoomed) {
@@ -426,13 +428,16 @@
               u.setSelect({ left: 0, top: 0, width: 0, height: 0 }, false);
               
               console.log(`图表 ${chartName} 缩放到X轴范围: [${xMin.toFixed(2)}, ${xMax.toFixed(2)}]`);
-              
-              // 缩放完成后，重新设置灰色遮罩监听器
-              setTimeout(() => {
-                setupGraySelectionMask(u);
-                console.log(`🔄 缩放完成后重新设置灰色遮罩监听器: ${chartName}`);
-              }, 300);
+            } else {
+              // 如果选择区域太小，不进行缩放，但要确保灰色遮罩正常显示
+              console.log(`图表 ${chartName} 选择区域太小，不进行缩放`);
             }
+            
+            // 无论是否缩放，都要重新确保灰色遮罩监听器正常工作
+            setTimeout(() => {
+              setupGraySelectionMask(u);
+              console.log(`🔄 选择操作后重新设置灰色遮罩监听器: ${chartName}`);
+            }, 300);
           }
         ],
         setCursor: [
@@ -485,7 +490,7 @@
       // 初始化完成后延迟设置灰色遮罩监听器，确保uPlot完全准备好
       setTimeout(() => {
         setupGraySelectionMask(uplot);
-        console.log(`图表 ${chartName} 初始化完成，启动灰色遮罩监控`);
+        console.log(`🎯 图表 ${chartName} 初始化完成，启动灰色遮罩监控`);
       }, 200);
     } catch (error) {
       console.error(`图表 ${chartName} 初始化失败:`, error);
@@ -558,7 +563,7 @@
         setTimeout(() => {
           if (uplot) {
             setupGraySelectionMask(uplot);
-            console.log(`updateChart: 图表 ${chartName} 数据更新后重新启动灰色遮罩监控`);
+            console.log(`🔄 updateChart: 图表 ${chartName} 数据更新后重新启动灰色遮罩监控`);
           }
         }, 20);
       }, 100); // 延迟100ms，平滑动画
@@ -582,7 +587,7 @@
       // 曲线配置变化时，重新设置灰色遮罩监听器
       setTimeout(() => {
         setupGraySelectionMask(uplot);
-        console.log(`图表 ${chartName} 曲线配置变化后重新启动灰色遮罩监控`);
+        console.log(`🔄 图表 ${chartName} 曲线配置变化后重新启动灰色遮罩监控`);
       }, 100);
     }
   });
