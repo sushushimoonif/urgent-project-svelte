@@ -273,21 +273,14 @@
       hooks: {
         init: [
           (u: any) => {
-            // 等待 uPlot 创建默认的选择框，然后修改其样式
-            setTimeout(() => {
-              const selectDiv = u.root.querySelector('.u-select');
-              if (selectDiv) {
-                // 强制设置灰色遮罩样式，使用 !important 确保优先级
-                selectDiv.style.setProperty('background', 'rgba(156, 163, 175, 0.8)', 'important');
-                selectDiv.style.setProperty('border', '1px solid rgba(156, 163, 175, 0.6)', 'important');
-                selectDiv.style.setProperty('z-index', '100', 'important');
-                
-                // 保存引用以便后续使用
-                u.selectDiv = selectDiv;
-                
-                console.log('已设置灰色遮罩样式');
-              }
-            }, 100);
+            // 初始化时设置灰色遮罩样式
+            setupGraySelectionMask(u);
+          }
+        ],
+        ready: [
+          (u: any) => {
+            // 图表准备就绪后再次确保灰色遮罩样式
+            setupGraySelectionMask(u);
           }
         ],
         setSelect: [
@@ -295,26 +288,8 @@
             const select = u.select;
             const { left, top, width, height } = select;
             
-            // 查找并更新选择框显示
-            const selectDiv = u.root.querySelector('.u-select') || u.selectDiv;
-            if (selectDiv) {
-              if (width > 0 && height > 0) {
-                selectDiv.style.display = 'block';
-                selectDiv.style.left = left + 'px';
-                selectDiv.style.top = u.bbox.top + 'px';  // Y轴从图表顶部开始
-                selectDiv.style.width = width + 'px';
-                selectDiv.style.height = u.bbox.height + 'px';  // Y轴占满整个图表高度
-                
-                // 强制重新设置灰色遮罩样式，确保不被覆盖
-                selectDiv.style.setProperty('background', 'rgba(156, 163, 175, 0.8)', 'important');
-                selectDiv.style.setProperty('border', '1px solid rgba(156, 163, 175, 0.6)', 'important');
-                selectDiv.style.setProperty('z-index', '100', 'important');
-                
-                console.log('选择区域显示，应用灰色遮罩');
-              } else {
-                selectDiv.style.display = 'none';
-              }
-            }
+            // 每次选择时都重新设置灰色遮罩
+            applyGraySelectionStyle(u, select);
             
             if (width > 10) { // 最小选择宽度
               // 保存原始范围（如果还没保存的话）
@@ -331,16 +306,10 @@
               // 只缩放X轴，Y轴保持自动调整
               u.setScale('x', { min: xMin, max: xMax });
               
-              // 放大后延迟隐藏选择框（清除灰色遮罩）
-              const selectDiv = u.root.querySelector('.u-select') || u.selectDiv;
-              if (selectDiv) {
-                setTimeout(() => {
-                  selectDiv.style.display = 'none';
-                }, 200); // 延迟200ms隐藏，让用户看到选择效果
-                
-                // 重置选择状态，确保遮罩完全清除
+              // 放大后清除选择状态
+              setTimeout(() => {
                 u.setSelect({ left: 0, top: 0, width: 0, height: 0 }, false);
-              }
+              }, 200);
               
               console.log(`图表 ${chartName} 缩放到X轴范围: [${xMin.toFixed(2)}, ${xMax.toFixed(2)}]`);
             }
@@ -382,6 +351,64 @@
       },
     };
 
+    // 设置灰色选择遮罩的函数
+    function setupGraySelectionMask(u: any) {
+      // 多次尝试查找和设置选择框样式
+      const attempts = [0, 50, 100, 200, 500];
+      
+      attempts.forEach(delay => {
+        setTimeout(() => {
+          const selectDiv = u.root.querySelector('.u-select');
+          if (selectDiv) {
+            applyGrayMaskStyles(selectDiv);
+            u.selectDiv = selectDiv; // 保存引用
+            console.log(`延迟 ${delay}ms 后设置灰色遮罩样式成功`);
+          }
+        }, delay);
+      });
+    }
+
+    // 应用灰色遮罩样式的函数
+    function applyGrayMaskStyles(element: HTMLElement) {
+      if (!element) return;
+      
+      // 使用多种方式确保样式生效
+      element.style.setProperty('background', 'rgba(156, 163, 175, 0.8)', 'important');
+      element.style.setProperty('background-color', 'rgba(156, 163, 175, 0.8)', 'important');
+      element.style.setProperty('border', '1px solid rgba(156, 163, 175, 0.6)', 'important');
+      element.style.setProperty('z-index', '100', 'important');
+      
+      // 直接设置属性作为备用
+      element.style.background = 'rgba(156, 163, 175, 0.8)';
+      element.style.backgroundColor = 'rgba(156, 163, 175, 0.8)';
+      element.style.border = '1px solid rgba(156, 163, 175, 0.6)';
+    }
+
+    // 每次选择时应用灰色样式的函数
+    function applyGraySelectionStyle(u: any, select: any) {
+      const { left, top, width, height } = select;
+      
+      // 查找选择框元素
+      const selectDiv = u.root.querySelector('.u-select') || u.selectDiv;
+      
+      if (selectDiv) {
+        if (width > 0 && height > 0) {
+          // 显示选择框
+          selectDiv.style.display = 'block';
+          selectDiv.style.left = left + 'px';
+          selectDiv.style.top = u.bbox.top + 'px';
+          selectDiv.style.width = width + 'px';
+          selectDiv.style.height = u.bbox.height + 'px';
+          
+          // 每次都重新应用灰色遮罩样式
+          applyGrayMaskStyles(selectDiv);
+          
+          console.log('选择区域显示，重新应用灰色遮罩样式');
+        } else {
+          selectDiv.style.display = 'none';
+        }
+      }
+    }
     try {
       // 创建uPlot实例
       const transformedData = transformDataForUPlot(data);
@@ -392,6 +419,11 @@
       
       console.log(`图表 ${chartName} 初始化成功，数据点数: ${data.length}, 全屏模式: ${isFullscreen}`);
       isLoading = false;
+      
+      // 初始化完成后再次确保灰色遮罩样式
+      setTimeout(() => {
+        setupGraySelectionMask(uplot);
+      }, 100);
     } catch (error) {
       console.error(`图表 ${chartName} 初始化失败:`, error);
       loadError = true;
@@ -458,6 +490,13 @@
             });
           }, 150); // 增加延迟，使滚动平滑
         }
+        
+        // 数据更新后重新确保灰色遮罩样式
+        setTimeout(() => {
+          if (uplot) {
+            setupGraySelectionMask(uplot);
+          }
+        }, 200);
       }, 100); // 延迟100ms，平滑动画
 
       console.log(`图表 ${chartName} 数据更新成功，当前数据点: ${data.length}`);
