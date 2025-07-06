@@ -340,7 +340,6 @@
               
               // 立即清除选择状态，不使用延迟
               u.setSelect({ left: 0, top: 0, width: 0, height: 0 }, false);
-              }
               
               console.log(`图表 ${chartName} 缩放到X轴范围: [${xMin.toFixed(2)}, ${xMax.toFixed(2)}]`);
             }
