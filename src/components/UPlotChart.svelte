@@ -22,6 +22,11 @@
   let isLoading = $state(true);
   let loadError = $state(false);
   let isFullscreen = $state(false);
+  
+  // 缩放状态管理
+  let originalXRange = $state<[number, number] | null>(null);
+  let originalYRange = $state<[number, number] | null>(null);
+  let isZoomed = $state(false);
 
   // Tooltip状态 - 修改位置为鼠标左上方，半透明度改为70%
   let showTooltip = $state(false);
@@ -225,7 +230,9 @@
           key: `chart-${chartId}`,
         },
         drag: {
-          setScale: false,
+          setScale: true, // 启用拖拽缩放
+          x: true,        // 允许X轴缩放
+          y: true,        // 允许Y轴缩放
         },
         points: {
           show: true,
@@ -257,7 +264,47 @@
           },
         },
       },
+      select: {
+        show: true,
+        left: 0,
+        width: 0,
+        top: 0,
+        height: 0,
+      },
       hooks: {
+        setSelect: [
+          (u: any) => {
+            // 当用户完成框选时触发
+            const { left, top, width, height } = u.select;
+            
+            if (width > 10 && height > 10) { // 最小选择区域
+              // 保存原始范围（如果还没保存的话）
+              if (!isZoomed) {
+                const xScale = u.scales.x;
+                const yScale = u.scales.y;
+                originalXRange = [xScale.min, xScale.max];
+                originalYRange = [yScale.min, yScale.max];
+                isZoomed = true;
+              }
+              
+              // 计算选择区域对应的数据范围
+              const plotRect = u.bbox;
+              const xMin = u.posToVal(left, 'x');
+              const xMax = u.posToVal(left + width, 'x');
+              const yMin = u.posToVal(top + height, 'y');
+              const yMax = u.posToVal(top, 'y');
+              
+              // 应用新的缩放范围
+              u.setScale('x', { min: xMin, max: xMax });
+              u.setScale('y', { min: yMin, max: yMax });
+              
+              console.log(`图表 ${chartName} 缩放到范围: X[${xMin.toFixed(2)}, ${xMax.toFixed(2)}], Y[${yMin.toFixed(2)}, ${yMax.toFixed(2)}]`);
+            }
+            
+            // 清除选择框
+            u.setSelect({ left: 0, top: 0, width: 0, height: 0 }, false);
+          }
+        ],
         setCursor: [
           (u: any) => {
             const { left, top, idx } = u.cursor;
@@ -298,12 +345,33 @@
       // 创建uPlot实例
       const transformedData = transformDataForUPlot(data);
       uplot = new uPlot(opts, transformedData, currentContainer);
+      
+      // 添加双击事件监听器来重置缩放
+      currentContainer.addEventListener('dblclick', handleDoubleClick);
+      
       console.log(`图表 ${chartName} 初始化成功，数据点数: ${data.length}, 全屏模式: ${isFullscreen}`);
       isLoading = false;
     } catch (error) {
       console.error(`图表 ${chartName} 初始化失败:`, error);
       loadError = true;
       isLoading = false;
+    }
+  }
+
+  // 双击重置缩放
+  function handleDoubleClick(event: MouseEvent) {
+    if (uplot && isZoomed && originalXRange && originalYRange) {
+      // 重置到原始范围
+      uplot.setScale('x', { min: originalXRange[0], max: originalXRange[1] });
+      uplot.setScale('y', { min: originalYRange[0], max: originalYRange[1] });
+      
+      // 重置缩放状态
+      isZoomed = false;
+      originalXRange = null;
+      originalYRange = null;
+      
+      console.log(`图表 ${chartName} 缩放已重置`);
+      event.preventDefault();
     }
   }
 
@@ -401,6 +469,12 @@
 
   onDestroy(() => {
     if (uplot) {
+      // 移除事件监听器
+      const currentContainer = isFullscreen ? fullscreenChartContainer : chartContainer;
+      if (currentContainer) {
+        currentContainer.removeEventListener('dblclick', handleDoubleClick);
+      }
+      
       uplot.destroy();
       uplot = null;
     }
