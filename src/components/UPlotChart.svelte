@@ -236,9 +236,9 @@
           key: `chart-${chartId}`,
         },
         drag: {
-          setScale: false, // 禁用默认的拖拽缩放，我们自己处理
-          x: true,         // 允许X轴选择
-          y: true,         // 允许Y轴选择
+          setScale: false, // 禁用默认的拖拽缩放
+          x: true,
+          y: false,        // 只允许X轴选择，Y轴自动占满
         },
         points: {
           show: true,
@@ -271,44 +271,40 @@
         },
       },
       select: {
-        show: true,  // 启用UPlot原生选择框
+        show: true,      // 启用选择框
+        over: true,      // 选择框显示在图表上方
         left: 0,
-        width: 0,
         top: 0,
+        width: 0,
         height: 0,
       },
       hooks: {
         setSelect: [
           (u: any) => {
             // 当用户完成框选时触发
-            const { left, top, width, height } = u.select;
+            const select = u.select;
+            const { left, width } = select;
             
-            if (width > 10 && height > 10) { // 最小选择区域
+            if (width > 10) { // 最小选择宽度
               // 保存原始范围（如果还没保存的话）
               if (!isZoomed) {
                 const xScale = u.scales.x;
-                const yScale = u.scales.y;
                 originalXRange = [xScale.min, xScale.max];
-                originalYRange = [yScale.min, yScale.max];
                 isZoomed = true;
               }
               
               // 计算选择区域对应的数据范围
-              const plotRect = u.bbox;
               const xMin = u.posToVal(left, 'x');
               const xMax = u.posToVal(left + width, 'x');
-              const yMin = u.posToVal(top + height, 'y');
-              const yMax = u.posToVal(top, 'y');
               
-              // 应用新的缩放范围
+              // 只缩放X轴，Y轴保持自动调整
               u.setScale('x', { min: xMin, max: xMax });
-              u.setScale('y', { min: yMin, max: yMax });
               
-              console.log(`图表 ${chartName} 缩放到范围: X[${xMin.toFixed(2)}, ${xMax.toFixed(2)}], Y[${yMin.toFixed(2)}, ${yMax.toFixed(2)}]`);
+              console.log(`图表 ${chartName} 缩放到X轴范围: [${xMin.toFixed(2)}, ${xMax.toFixed(2)}]`);
             }
             
             // 清除选择框
-            u.setSelect({ left: 0, top: 0, width: 0, height: 0 }, false);
+            u.setSelect({ left: 0, top: 0, width: 0, height: 0 });
           }
         ],
         setCursor: [
@@ -366,15 +362,13 @@
 
   // 双击重置缩放
   function handleDoubleClick(event: MouseEvent) {
-    if (uplot && isZoomed && originalXRange && originalYRange) {
+    if (uplot && isZoomed && originalXRange) {
       // 重置到原始范围
       uplot.setScale('x', { min: originalXRange[0], max: originalXRange[1] });
-      uplot.setScale('y', { min: originalYRange[0], max: originalYRange[1] });
       
       // 重置缩放状态
       isZoomed = false;
       originalXRange = null;
-      originalYRange = null;
       
       console.log(`图表 ${chartName} 缩放已重置`);
       event.preventDefault();
