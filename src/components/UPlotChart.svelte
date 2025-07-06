@@ -303,8 +303,6 @@
               console.log(`图表 ${chartName} 缩放到X轴范围: [${xMin.toFixed(2)}, ${xMax.toFixed(2)}]`);
             }
             
-            // 清除选择框
-            u.setSelect({ left: 0, top: 0, width: 0, height: 0 });
           }
         ],
         setCursor: [
