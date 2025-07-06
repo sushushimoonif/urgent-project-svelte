@@ -278,7 +278,7 @@
             selectDiv.className = 'u-select';
             selectDiv.style.cssText = `
               position: absolute;
-              background: rgba(156, 163, 175, 0.3);
+              background: rgba(156, 163, 175, 0.8);
               border: 1px solid rgba(156, 163, 175, 0.6);
               pointer-events: none;
               display: none;
@@ -321,7 +321,7 @@
                 u.selectDiv.style.width = width + 'px';
                 u.selectDiv.style.height = u.bbox.height + 'px';  // Y轴占满整个图表高度
                 // 设置灰色遮罩样式
-                u.selectDiv.style.background = 'rgba(156, 163, 175, 0.3)';
+                u.selectDiv.style.background = 'rgba(156, 163, 175, 0.8)';
                 u.selectDiv.style.border = '1px solid rgba(156, 163, 175, 0.6)';
               } else {
                 u.selectDiv.style.display = 'none';
