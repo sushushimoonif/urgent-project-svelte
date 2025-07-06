@@ -564,6 +564,12 @@
               min: 0, // 固定最左边为0
               max: latestTime,
             });
+            
+            // 缩放后重新设置灰色遮罩监听器
+            setTimeout(() => {
+              setupGraySelectionMask(uplot);
+              console.log(`🔄 数据更新缩放后重新设置灰色遮罩监听器: ${chartName}`);
+            }, 100);
           }, 150); // 增加延迟，使滚动平滑
         }
         
@@ -596,6 +602,16 @@
     }
   });
 
+  // 响应式监听全屏状态变化，重新初始化图表
+  $effect(() => {
+    if (uplot && (isFullscreen || !isFullscreen)) {
+      // 全屏状态变化时重新初始化图表
+      setTimeout(() => {
+        initChart();
+      }, 100);
+    }
+  });
+
   function handleResize() {
     if (uplot) {
       const currentContainer = isFullscreen ? fullscreenChartContainer : chartContainer;
@@ -608,6 +624,12 @@
         width: newWidth,
         height: newHeight
       });
+      
+      // 重新设置灰色遮罩监听器
+      setTimeout(() => {
+        setupGraySelectionMask(uplot);
+        console.log(`🔄 窗口大小调整后重新设置灰色遮罩监听器: ${chartName}`);
+      }, 100);
     }
   }
 
