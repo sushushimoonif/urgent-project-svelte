@@ -273,38 +273,21 @@
       hooks: {
         init: [
           (u: any) => {
-            // 创建选择框元素
-            const selectDiv = document.createElement('div');
-            selectDiv.className = 'u-select';
-            selectDiv.style.cssText = `
-              position: absolute;
-              background: rgba(156, 163, 175, 0.8);
-              border: 1px solid rgba(156, 163, 175, 0.6);
-              pointer-events: none;
-              display: none;
-              z-index: 100;
-            `;
-            u.over.appendChild(selectDiv);
-            u.selectDiv = selectDiv;
-            
-            // 添加鼠标事件监听器来处理选择状态
-            u.over.addEventListener('mousedown', (e: MouseEvent) => {
-              if (e.button === 0) { // 左键
-                isSelecting = true;
+            // 等待 uPlot 创建默认的选择框，然后修改其样式
+            setTimeout(() => {
+              const selectDiv = u.root.querySelector('.u-select');
+              if (selectDiv) {
+                // 强制设置灰色遮罩样式，使用 !important 确保优先级
+                selectDiv.style.setProperty('background', 'rgba(156, 163, 175, 0.8)', 'important');
+                selectDiv.style.setProperty('border', '1px solid rgba(156, 163, 175, 0.6)', 'important');
+                selectDiv.style.setProperty('z-index', '100', 'important');
+                
+                // 保存引用以便后续使用
+                u.selectDiv = selectDiv;
+                
+                console.log('已设置灰色遮罩样式');
               }
-            });
-            
-            u.over.addEventListener('mouseup', (e: MouseEvent) => {
-              if (e.button === 0) { // 左键
-                isSelecting = false;
-                // 鼠标释放后短暂延迟再隐藏遮罩，确保缩放操作完成
-                setTimeout(() => {
-                  if (u.selectDiv) {
-                    u.selectDiv.style.display = 'none';
-                  }
-                }, 100);
-              }
-            });
+            }, 100);
           }
         ],
         setSelect: [
@@ -312,19 +295,24 @@
             const select = u.select;
             const { left, top, width, height } = select;
             
-            // 更新选择框显示
-            if (u.selectDiv) {
+            // 查找并更新选择框显示
+            const selectDiv = u.root.querySelector('.u-select') || u.selectDiv;
+            if (selectDiv) {
               if (width > 0 && height > 0) {
-                u.selectDiv.style.display = 'block';
-                u.selectDiv.style.left = left + 'px';
-                u.selectDiv.style.top = u.bbox.top + 'px';  // Y轴从图表顶部开始
-                u.selectDiv.style.width = width + 'px';
-                u.selectDiv.style.height = u.bbox.height + 'px';  // Y轴占满整个图表高度
-                // 设置灰色遮罩样式
-                u.selectDiv.style.background = 'rgba(156, 163, 175, 0.8)';
-                u.selectDiv.style.border = '1px solid rgba(156, 163, 175, 0.6)';
+                selectDiv.style.display = 'block';
+                selectDiv.style.left = left + 'px';
+                selectDiv.style.top = u.bbox.top + 'px';  // Y轴从图表顶部开始
+                selectDiv.style.width = width + 'px';
+                selectDiv.style.height = u.bbox.height + 'px';  // Y轴占满整个图表高度
+                
+                // 强制重新设置灰色遮罩样式，确保不被覆盖
+                selectDiv.style.setProperty('background', 'rgba(156, 163, 175, 0.8)', 'important');
+                selectDiv.style.setProperty('border', '1px solid rgba(156, 163, 175, 0.6)', 'important');
+                selectDiv.style.setProperty('z-index', '100', 'important');
+                
+                console.log('选择区域显示，应用灰色遮罩');
               } else {
-                u.selectDiv.style.display = 'none';
+                selectDiv.style.display = 'none';
               }
             }
             
@@ -343,9 +331,13 @@
               // 只缩放X轴，Y轴保持自动调整
               u.setScale('x', { min: xMin, max: xMax });
               
-              // 放大后立即隐藏选择框（清除灰色遮罩）
-              if (u.selectDiv) {
-                u.selectDiv.style.display = 'none';
+              // 放大后延迟隐藏选择框（清除灰色遮罩）
+              const selectDiv = u.root.querySelector('.u-select') || u.selectDiv;
+              if (selectDiv) {
+                setTimeout(() => {
+                  selectDiv.style.display = 'none';
+                }, 200); // 延迟200ms隐藏，让用户看到选择效果
+                
                 // 重置选择状态，确保遮罩完全清除
                 u.setSelect({ left: 0, top: 0, width: 0, height: 0 }, false);
               }
