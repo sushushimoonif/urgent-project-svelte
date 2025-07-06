@@ -288,10 +288,13 @@
             const select = u.select;
             const { left, top, width, height } = select;
             
-            // 每次选择时都重新设置灰色遮罩
-            applyGraySelectionStyle(u, select);
-            
             if (width > 10) { // 最小选择宽度
+              // 立即隐藏选择遮罩，避免移动效果
+              const selectDiv = u.root.querySelector('.u-select') || u.selectDiv;
+              if (selectDiv) {
+                selectDiv.style.display = 'none';
+              }
+              
               // 保存原始范围（如果还没保存的话）
               if (!isZoomed) {
                 const xScale = u.scales.x;
@@ -306,12 +309,13 @@
               // 只缩放X轴，Y轴保持自动调整
               u.setScale('x', { min: xMin, max: xMax });
               
-              // 放大后清除选择状态
-              setTimeout(() => {
-                u.setSelect({ left: 0, top: 0, width: 0, height: 0 }, false);
-              }, 200);
+              // 立即清除选择状态，不使用延迟
+              u.setSelect({ left: 0, top: 0, width: 0, height: 0 }, false);
               
               console.log(`图表 ${chartName} 缩放到X轴范围: [${xMin.toFixed(2)}, ${xMax.toFixed(2)}]`);
+            } else {
+              // 正常选择时设置灰色遮罩
+              applyGraySelectionStyle(u, select);
             }
           }
         ],
