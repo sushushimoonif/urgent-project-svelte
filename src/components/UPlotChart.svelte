@@ -169,15 +169,8 @@
 
     // 持续监控并强制应用灰色遮罩样式
     function setupGraySelectionMask(u: any) {
-      // 清理之前的observer
-      if (u.grayMaskObserver) {
-        u.grayMaskObserver.disconnect();
-      }
-      
-      // 清理之前的定时器
-      if (u.grayMaskInterval) {
-        clearInterval(u.grayMaskInterval);
-      }
+      // 先清理之前的监听器
+      cleanupGraySelectionMask(u);
       
       // 创建MutationObserver来监听DOM变化
       u.grayMaskObserver = new MutationObserver((mutations) => {
@@ -188,12 +181,12 @@
                 const element = node as HTMLElement;
                 if (element.classList.contains('u-select')) {
                   forceApplyGrayMaskStyles(element);
-                  console.log('🔍 检测到新的选择框元素');
+                  console.log('🔍 MutationObserver: 检测到新的选择框元素');
                 }
                 const selectChild = element.querySelector('.u-select');
                 if (selectChild) {
                   forceApplyGrayMaskStyles(selectChild as HTMLElement);
-                  console.log('🔍 检测到选择框子元素');
+                  console.log('🔍 MutationObserver: 检测到选择框子元素');
                 }
               }
             });
@@ -216,7 +209,7 @@
           const currentBg = selectDiv.style.backgroundColor || getComputedStyle(selectDiv).backgroundColor;
           if (!currentBg.includes('156, 163, 175')) {
             forceApplyGrayMaskStyles(selectDiv as HTMLElement);
-            console.log('⏰ 定时器检测到样式被覆盖，重新应用灰色样式');
+            console.log('⏰ 定时器: 检测到样式被覆盖，重新应用灰色样式');
           }
         }
       }, 50); // 每50ms检查一次
@@ -225,10 +218,10 @@
       const existingSelectDiv = u.root.querySelector('.u-select');
       if (existingSelectDiv) {
         forceApplyGrayMaskStyles(existingSelectDiv as HTMLElement);
-        console.log('🎯 立即处理现有选择框');
+        console.log('🎯 setupGraySelectionMask: 立即处理现有选择框');
       }
       
-      console.log('🚀 灰色遮罩监控已启动（MutationObserver + 定时器）');
+      console.log('🚀 灰色遮罩监控已启动（MutationObserver + 定时器）', { chartName });
     }
 
     // 清理灰色遮罩监听器
@@ -236,10 +229,12 @@
       if (u.grayMaskObserver) {
         u.grayMaskObserver.disconnect();
         u.grayMaskObserver = null;
+        console.log('🧹 清理 MutationObserver');
       }
       if (u.grayMaskInterval) {
         clearInterval(u.grayMaskInterval);
         u.grayMaskInterval = null;
+        console.log('🧹 清理定时器');
       }
     }
 
@@ -367,27 +362,33 @@
       hooks: {
         init: [
           (u: any) => {
-            // 初始化时设置灰色遮罩样式
+            console.log(`init hook: 图表 ${chartName} 初始化`);
             setupGraySelectionMask(u);
-            console.log('init hook: 启动灰色遮罩监控');
           }
         ],
         ready: [
           (u: any) => {
-            // 图表准备就绪后再次确保灰色遮罩样式
+            console.log(`ready hook: 图表 ${chartName} 准备就绪`);
             setTimeout(() => {
               setupGraySelectionMask(u);
-              console.log('ready hook: 重新启动灰色遮罩监控');
             }, 100);
           }
         ],
         setData: [
           (u: any) => {
-            // 每次数据更新后重新设置灰色遮罩样式
+            console.log(`setData hook: 图表 ${chartName} 数据更新`);
             setTimeout(() => {
               setupGraySelectionMask(u);
-              console.log('setData hook: 数据更新后重新启动灰色遮罩监控');
             }, 50);
+          }
+        ],
+        setScale: [
+          (u: any) => {
+            console.log(`setScale hook: 图表 ${chartName} 缩放更新`);
+            // 缩放后重新设置灰色遮罩监听器
+            setTimeout(() => {
+              setupGraySelectionMask(u);
+            }, 100);
           }
         ],
         setSelect: [
@@ -395,19 +396,19 @@
             const select = u.select;
             const { left, top, width, height } = select;
             
-            // 每次选择操作时，立即强制应用灰色样式
+            console.log(`setSelect hook: 图表 ${chartName} 选择操作`, { width, height });
+            
+            // 立即强制应用灰色样式
             const selectDiv = u.root.querySelector('.u-select');
             if (selectDiv) {
               forceApplyGrayMaskStyles(selectDiv as HTMLElement);
-              console.log('📦 setSelect: 选择操作中，立即应用灰色遮罩');
               
-              // 使用多个延迟来确保样式被持续应用
-              [10, 50, 100, 200].forEach(delay => {
+              // 使用多个延迟来确保样式被持续应用，对抗uPlot的样式覆盖
+              [5, 10, 20, 50, 100, 200].forEach(delay => {
                 setTimeout(() => {
                   const currentSelectDiv = u.root.querySelector('.u-select');
                   if (currentSelectDiv) {
                     forceApplyGrayMaskStyles(currentSelectDiv as HTMLElement);
-                    console.log(`⏰ 延迟${delay}ms: 重新应用灰色遮罩`);
                   }
                 }, delay);
               });
@@ -438,6 +439,12 @@
               u.setSelect({ left: 0, top: 0, width: 0, height: 0 }, false);
               
               console.log(`图表 ${chartName} 缩放到X轴范围: [${xMin.toFixed(2)}, ${xMax.toFixed(2)}]`);
+              
+              // 缩放完成后，重新设置灰色遮罩监听器
+              setTimeout(() => {
+                setupGraySelectionMask(u);
+                console.log(`🔄 缩放完成后重新设置灰色遮罩监听器: ${chartName}`);
+              }, 300);
             }
           }
         ],
@@ -488,9 +495,11 @@
       console.log(`图表 ${chartName} 初始化成功，数据点数: ${data.length}, 全屏模式: ${isFullscreen}`);
       isLoading = false;
       
-      // 初始化完成后设置灰色遮罩监听器
-      setupGraySelectionMask(uplot);
-      console.log('图表初始化完成，启动灰色遮罩监控');
+      // 初始化完成后延迟设置灰色遮罩监听器，确保uPlot完全准备好
+      setTimeout(() => {
+        setupGraySelectionMask(uplot);
+        console.log(`图表 ${chartName} 初始化完成，启动灰色遮罩监控`);
+      }, 200);
     } catch (error) {
       console.error(`图表 ${chartName} 初始化失败:`, error);
       loadError = true;
@@ -562,7 +571,7 @@
         setTimeout(() => {
           if (uplot) {
             setupGraySelectionMask(uplot);
-            console.log('updateChart: 数据更新后重新启动灰色遮罩监控');
+            console.log(`updateChart: 图表 ${chartName} 数据更新后重新启动灰色遮罩监控`);
           }
         }, 20);
       }, 100); // 延迟100ms，平滑动画
@@ -583,13 +592,24 @@
   // 响应式更新曲线配置
   $effect(() => {
     if (curves && uplot) {
-      // 如果曲线配置发生变化，重新初始化图表
-      console.log(`图表 ${chartName} 曲线配置变化，重新初始化`);
-      initChart();
-    }
-  });
-
-  // 窗口大小变化时重新调整图表大小
+            // 每次选择操作时，立即强制应用灰色样式
+            setTimeout(() => {
+              const selectDivs = u.root.querySelectorAll('.u-select');
+              selectDivs.forEach((selectDiv: HTMLElement) => {
+                forceApplyGrayMaskStyles(selectDiv);
+                console.log('📦 setSelect: 选择操作中，立即应用灰色遮罩');
+              });
+              
+              // 使用多个延迟来确保样式被持续应用
+              [10, 50, 100, 200, 500].forEach(delay => {
+                setTimeout(() => {
+                  const currentSelectDivs = u.root.querySelectorAll('.u-select');
+                  currentSelectDivs.forEach((selectDiv: HTMLElement) => {
+                    forceApplyGrayMaskStyles(selectDiv);
+                    console.log(`⏰ 延迟${delay}ms: 重新应用灰色遮罩`);
+                  });
+                }, delay);
+              });
   function handleResize() {
     if (uplot) {
       const currentContainer = isFullscreen ? fullscreenChartContainer : chartContainer;
