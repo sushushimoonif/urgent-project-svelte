@@ -149,6 +149,81 @@
       uplot = null;
     }
 
+    // 强制应用灰色遮罩样式的函数 - 使用更强的CSS优先级
+    function forceApplyGrayMaskStyles(element: HTMLElement) {
+      if (!element) return;
+      
+      // 使用最高优先级的方式设置样式
+      element.style.setProperty('background', 'rgba(156, 163, 175, 0.8)', 'important');
+      element.style.setProperty('background-color', 'rgba(156, 163, 175, 0.8)', 'important');
+      element.style.setProperty('border', '1px solid rgba(156, 163, 175, 0.6)', 'important');
+      element.style.setProperty('z-index', '1000', 'important');
+      element.style.setProperty('pointer-events', 'none', 'important');
+      
+      // 添加自定义类名以便CSS覆盖
+      element.classList.add('gray-selection-mask');
+      
+      console.log('强制应用灰色遮罩样式');
+    }
+
+    // 设置灰色选择遮罩的函数 - 使用MutationObserver监听DOM变化
+    function setupGraySelectionMask(u: any) {
+      // 清理之前的observer
+      if (u.grayMaskObserver) {
+        u.grayMaskObserver.disconnect();
+      }
+      
+      // 创建新的MutationObserver来监听DOM变化
+      u.grayMaskObserver = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          if (mutation.type === 'childList') {
+            mutation.addedNodes.forEach((node) => {
+              if (node.nodeType === Node.ELEMENT_NODE) {
+                const element = node as HTMLElement;
+                // 检查是否是选择框元素
+                if (element.classList.contains('u-select')) {
+                  forceApplyGrayMaskStyles(element);
+                  console.log('MutationObserver: 新选择框创建，应用灰色样式');
+                }
+                // 检查子元素中是否有选择框
+                const selectChild = element.querySelector('.u-select');
+                if (selectChild) {
+                  forceApplyGrayMaskStyles(selectChild as HTMLElement);
+                  console.log('MutationObserver: 子元素选择框创建，应用灰色样式');
+                }
+              }
+            });
+          }
+          // 监听样式属性变化，防止被覆盖
+          if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+            const target = mutation.target as HTMLElement;
+            if (target.classList.contains('u-select') || target.classList.contains('gray-selection-mask')) {
+              // 延迟重新应用，避免无限循环
+              setTimeout(() => {
+                forceApplyGrayMaskStyles(target);
+                console.log('MutationObserver: 样式被修改，重新应用灰色样式');
+              }, 10);
+            }
+          }
+        });
+      });
+      
+      // 开始监听DOM变化
+      u.grayMaskObserver.observe(u.root, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['style', 'class']
+      });
+      
+      // 立即查找现有的选择框并应用样式
+      const existingSelectDiv = u.root.querySelector('.u-select');
+      if (existingSelectDiv) {
+        forceApplyGrayMaskStyles(existingSelectDiv as HTMLElement);
+        console.log('setupGraySelectionMask: 找到现有选择框，应用灰色样式');
+      }
+    }
+
     // 构建series配置
     const series = [
       {
@@ -273,21 +348,27 @@
       hooks: {
         init: [
           (u: any) => {
-            // 等待 uPlot 创建默认的选择框，然后修改其样式
+            // 初始化时设置灰色遮罩样式
+            setupGraySelectionMask(u);
+            console.log('init hook: 设置灰色遮罩监听器');
+          }
+        ],
+        ready: [
+          (u: any) => {
+            // 图表准备就绪后再次确保灰色遮罩样式
             setTimeout(() => {
-              const selectDiv = u.root.querySelector('.u-select');
-              if (selectDiv) {
-                // 强制设置灰色遮罩样式，使用 !important 确保优先级
-                selectDiv.style.setProperty('background', 'rgba(156, 163, 175, 0.8)', 'important');
-                selectDiv.style.setProperty('border', '1px solid rgba(156, 163, 175, 0.6)', 'important');
-                selectDiv.style.setProperty('z-index', '100', 'important');
-                
-                // 保存引用以便后续使用
-                u.selectDiv = selectDiv;
-                
-                console.log('已设置灰色遮罩样式');
-              }
+              setupGraySelectionMask(u);
+              console.log('ready hook: 重新设置灰色遮罩监听器');
             }, 100);
+          }
+        ],
+        setData: [
+          (u: any) => {
+            // 每次数据更新后重新设置灰色遮罩样式
+            setTimeout(() => {
+              setupGraySelectionMask(u);
+              console.log('setData hook: 数据更新后重新设置灰色遮罩监听器');
+            }, 50);
           }
         ],
         setSelect: [
@@ -295,28 +376,21 @@
             const select = u.select;
             const { left, top, width, height } = select;
             
-            // 查找并更新选择框显示
-            const selectDiv = u.root.querySelector('.u-select') || u.selectDiv;
-            if (selectDiv) {
-              if (width > 0 && height > 0) {
-                selectDiv.style.display = 'block';
-                selectDiv.style.left = left + 'px';
-                selectDiv.style.top = u.bbox.top + 'px';  // Y轴从图表顶部开始
-                selectDiv.style.width = width + 'px';
-                selectDiv.style.height = u.bbox.height + 'px';  // Y轴占满整个图表高度
-                
-                // 强制重新设置灰色遮罩样式，确保不被覆盖
-                selectDiv.style.setProperty('background', 'rgba(156, 163, 175, 0.8)', 'important');
-                selectDiv.style.setProperty('border', '1px solid rgba(156, 163, 175, 0.6)', 'important');
-                selectDiv.style.setProperty('z-index', '100', 'important');
-                
-                console.log('选择区域显示，应用灰色遮罩');
-              } else {
-                selectDiv.style.display = 'none';
-              }
+            // 每次选择操作时，确保选择框有灰色样式
+            const selectDiv = u.root.querySelector('.u-select');
+            if (selectDiv && width > 0 && height > 0) {
+              // 立即应用灰色遮罩样式
+              forceApplyGrayMaskStyles(selectDiv as HTMLElement);
+              console.log('setSelect: 选择操作中，强制应用灰色遮罩样式');
             }
             
             if (width > 10) { // 最小选择宽度
+              // 立即隐藏选择遮罩，避免移动效果
+              const selectDiv = u.root.querySelector('.u-select') || u.selectDiv;
+              if (selectDiv) {
+                selectDiv.style.display = 'none';
+              }
+              
               // 保存原始范围（如果还没保存的话）
               if (!isZoomed) {
                 const xScale = u.scales.x;
@@ -331,16 +405,8 @@
               // 只缩放X轴，Y轴保持自动调整
               u.setScale('x', { min: xMin, max: xMax });
               
-              // 放大后延迟隐藏选择框（清除灰色遮罩）
-              const selectDiv = u.root.querySelector('.u-select') || u.selectDiv;
-              if (selectDiv) {
-                setTimeout(() => {
-                  selectDiv.style.display = 'none';
-                }, 200); // 延迟200ms隐藏，让用户看到选择效果
-                
-                // 重置选择状态，确保遮罩完全清除
-                u.setSelect({ left: 0, top: 0, width: 0, height: 0 }, false);
-              }
+              // 立即清除选择状态，不使用延迟
+              u.setSelect({ left: 0, top: 0, width: 0, height: 0 }, false);
               
               console.log(`图表 ${chartName} 缩放到X轴范围: [${xMin.toFixed(2)}, ${xMax.toFixed(2)}]`);
             }
@@ -392,6 +458,10 @@
       
       console.log(`图表 ${chartName} 初始化成功，数据点数: ${data.length}, 全屏模式: ${isFullscreen}`);
       isLoading = false;
+      
+      // 初始化完成后设置灰色遮罩监听器
+      setupGraySelectionMask(uplot);
+      console.log('图表初始化完成，设置灰色遮罩监听器');
     } catch (error) {
       console.error(`图表 ${chartName} 初始化失败:`, error);
       loadError = true;
@@ -458,6 +528,14 @@
             });
           }, 150); // 增加延迟，使滚动平滑
         }
+        
+        // 数据更新后重新确保灰色遮罩样式
+        setTimeout(() => {
+          if (uplot) {
+            setupGraySelectionMask(uplot);
+            console.log('updateChart: 数据更新后重新设置灰色遮罩监听器');
+          }
+        }, 20);
       }, 100); // 延迟100ms，平滑动画
 
       console.log(`图表 ${chartName} 数据更新成功，当前数据点: ${data.length}`);
@@ -508,6 +586,11 @@
 
   onDestroy(() => {
     if (uplot) {
+      // 清理MutationObserver
+      if (uplot.grayMaskObserver) {
+        uplot.grayMaskObserver.disconnect();
+      }
+      
       // 移除事件监听器
       const currentContainer = isFullscreen ? fullscreenChartContainer : chartContainer;
       if (currentContainer) {
@@ -525,6 +608,24 @@
 <!-- uPlot CSS样式 -->
 <svelte:head>
   <link rel="stylesheet" href="/lib/uPlot.min.css" />
+  <style>
+    /* 强制覆盖uPlot选择框样式 */
+    .u-select,
+    .gray-selection-mask {
+      background: rgba(156, 163, 175, 0.8) !important;
+      background-color: rgba(156, 163, 175, 0.8) !important;
+      border: 1px solid rgba(156, 163, 175, 0.6) !important;
+      z-index: 1000 !important;
+      pointer-events: none !important;
+    }
+    
+    /* 确保在所有状态下都应用灰色样式 */
+    .uplot .u-select {
+      background: rgba(156, 163, 175, 0.8) !important;
+      background-color: rgba(156, 163, 175, 0.8) !important;
+      border: 1px solid rgba(156, 163, 175, 0.6) !important;
+    }
+  </style>
 </svelte:head>
 
 <!-- 全屏模态框 -->
