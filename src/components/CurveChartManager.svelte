@@ -1,7 +1,7 @@
 <script lang="ts">
     import type { curveGroup } from "@/utils/types";
     import AddButton from "./AddButton.svelte";
-    import PresetButton from "./Buttons/PresetButton.svelte";
+    import PresetButton from "./PresetButton.svelte";
     import CurveGroup from "./CurveGroup.svelte";
     import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
     import { downloadDir, join } from "@tauri-apps/api/path";
