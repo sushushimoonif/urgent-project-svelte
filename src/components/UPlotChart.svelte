@@ -278,14 +278,33 @@
             selectDiv.className = 'u-select';
             selectDiv.style.cssText = `
               position: absolute;
-              background: rgba(59, 130, 246, 0.2);
-              border: 1px solid rgba(59, 130, 246, 0.5);
+              background: rgba(156, 163, 175, 0.3);
+              border: 1px solid rgba(156, 163, 175, 0.6);
               pointer-events: none;
               display: none;
               z-index: 100;
             `;
             u.over.appendChild(selectDiv);
             u.selectDiv = selectDiv;
+            
+            // 添加鼠标事件监听器来处理选择状态
+            u.over.addEventListener('mousedown', (e: MouseEvent) => {
+              if (e.button === 0) { // 左键
+                isSelecting = true;
+              }
+            });
+            
+            u.over.addEventListener('mouseup', (e: MouseEvent) => {
+              if (e.button === 0) { // 左键
+                isSelecting = false;
+                // 鼠标释放后短暂延迟再隐藏遮罩，确保缩放操作完成
+                setTimeout(() => {
+                  if (u.selectDiv) {
+                    u.selectDiv.style.display = 'none';
+                  }
+                }, 100);
+              }
+            });
           }
         ],
         setSelect: [
@@ -301,6 +320,9 @@
                 u.selectDiv.style.top = u.bbox.top + 'px';  // Y轴从图表顶部开始
                 u.selectDiv.style.width = width + 'px';
                 u.selectDiv.style.height = u.bbox.height + 'px';  // Y轴占满整个图表高度
+                // 设置灰色遮罩样式
+                u.selectDiv.style.background = 'rgba(156, 163, 175, 0.3)';
+                u.selectDiv.style.border = '1px solid rgba(156, 163, 175, 0.6)';
               } else {
                 u.selectDiv.style.display = 'none';
               }
@@ -321,9 +343,11 @@
               // 只缩放X轴，Y轴保持自动调整
               u.setScale('x', { min: xMin, max: xMax });
               
-              // 隐藏选择框
+              // 放大后立即隐藏选择框（清除灰色遮罩）
               if (u.selectDiv) {
                 u.selectDiv.style.display = 'none';
+                // 重置选择状态，确保遮罩完全清除
+                u.setSelect({ left: 0, top: 0, width: 0, height: 0 }, false);
               }
               
               console.log(`图表 ${chartName} 缩放到X轴范围: [${xMin.toFixed(2)}, ${xMax.toFixed(2)}]`);
