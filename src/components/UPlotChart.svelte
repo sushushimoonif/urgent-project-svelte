@@ -153,105 +153,75 @@
     function forceApplyGrayMaskStyles(element: HTMLElement) {
       if (!element) return;
       
-      // 使用单独的样式设置，确保每个属性都被正确应用
+      // 使用最高优先级的方式设置样式
       element.style.setProperty('background', 'rgba(156, 163, 175, 0.8)', 'important');
       element.style.setProperty('background-color', 'rgba(156, 163, 175, 0.8)', 'important');
       element.style.setProperty('border', '1px solid rgba(156, 163, 175, 0.6)', 'important');
       element.style.setProperty('z-index', '1000', 'important');
       element.style.setProperty('pointer-events', 'none', 'important');
-      element.style.setProperty('position', 'absolute', 'important');
       
       // 添加自定义类名以便CSS覆盖
       element.classList.add('gray-selection-mask');
       
-      console.log('✅ 强制应用灰色遮罩样式成功');
+      console.log('强制应用灰色遮罩样式');
     }
 
-    // 实时监控选择框并应用灰色样式
+    // 设置灰色选择遮罩的函数 - 使用MutationObserver监听DOM变化
     function setupGraySelectionMask(u: any) {
-      // 清理之前的监听器
+      // 清理之前的observer
       if (u.grayMaskObserver) {
         u.grayMaskObserver.disconnect();
       }
       
-      // 创建MutationObserver来监听DOM变化
-      const observer = new MutationObserver((mutations) => {
+      // 创建新的MutationObserver来监听DOM变化
+      u.grayMaskObserver = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
-          // 监听子节点添加
           if (mutation.type === 'childList') {
             mutation.addedNodes.forEach((node) => {
               if (node.nodeType === Node.ELEMENT_NODE) {
                 const element = node as HTMLElement;
-                if (element.classList && element.classList.contains('u-select')) {
-                  console.log('🔍 检测到新的选择框元素');
+                // 检查是否是选择框元素
+                if (element.classList.contains('u-select')) {
                   forceApplyGrayMaskStyles(element);
+                  console.log('MutationObserver: 新选择框创建，应用灰色样式');
                 }
                 // 检查子元素中是否有选择框
-                const selectChild = element.querySelector && element.querySelector('.u-select');
+                const selectChild = element.querySelector('.u-select');
                 if (selectChild) {
-                  console.log('🔍 检测到选择框子元素');
                   forceApplyGrayMaskStyles(selectChild as HTMLElement);
+                  console.log('MutationObserver: 子元素选择框创建，应用灰色样式');
                 }
               }
             });
           }
-          
-          // 监听样式属性变化
-          if (mutation.type === 'attributes') {
+          // 监听样式属性变化，防止被覆盖
+          if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
             const target = mutation.target as HTMLElement;
-            if (target.classList && target.classList.contains('u-select')) {
-              console.log('🔄 选择框样式被修改，重新应用灰色样式');
-              forceApplyGrayMaskStyles(target);
+            if (target.classList.contains('u-select') || target.classList.contains('gray-selection-mask')) {
+              // 延迟重新应用，避免无限循环
+              setTimeout(() => {
+                forceApplyGrayMaskStyles(target);
+                console.log('MutationObserver: 样式被修改，重新应用灰色样式');
+              }, 10);
             }
           }
         });
       });
       
-      // 开始监听
-      observer.observe(u.root, {
+      // 开始监听DOM变化
+      u.grayMaskObserver.observe(u.root, {
         childList: true,
         subtree: true,
         attributes: true,
         attributeFilter: ['style', 'class']
       });
       
-      u.grayMaskObserver = observer;
-      
       // 立即查找现有的选择框并应用样式
       const existingSelectDiv = u.root.querySelector('.u-select');
       if (existingSelectDiv) {
         forceApplyGrayMaskStyles(existingSelectDiv as HTMLElement);
-        console.log('🎯 立即处理现有选择框');
+        console.log('setupGraySelectionMask: 找到现有选择框，应用灰色样式');
       }
-      
-      console.log('🚀 灰色遮罩监控已启动');
-    }
-
-    // 专门处理选择操作的函数
-    function handleSelection(u: any, select: any) {
-      const { left, top, width, height } = select;
-      
-      // 立即查找并处理选择框
-      const selectDiv = u.root.querySelector('.u-select');
-      if (selectDiv) {
-        if (width > 0 && height > 0) {
-          // 确保选择框可见并应用灰色样式
-          selectDiv.style.display = 'block';
-          forceApplyGrayMaskStyles(selectDiv as HTMLElement);
-          console.log('📦 选择操作: 立即应用灰色遮罩');
-        }
-      }
-      
-      // 使用多个延迟来确保样式被应用
-      [0, 10, 50, 100].forEach(delay => {
-        setTimeout(() => {
-          const selectDiv = u.root.querySelector('.u-select');
-          if (selectDiv && width > 0 && height > 0) {
-            forceApplyGrayMaskStyles(selectDiv as HTMLElement);
-            console.log(`⏰ 延迟${delay}ms: 重新应用灰色遮罩`);
-          }
-        }, delay);
-      });
     }
 
     // 构建series配置
@@ -380,7 +350,7 @@
           (u: any) => {
             // 初始化时设置灰色遮罩样式
             setupGraySelectionMask(u);
-            console.log('init hook: 启动灰色遮罩监控');
+            console.log('init hook: 设置灰色遮罩监听器');
           }
         ],
         ready: [
@@ -388,7 +358,7 @@
             // 图表准备就绪后再次确保灰色遮罩样式
             setTimeout(() => {
               setupGraySelectionMask(u);
-              console.log('ready hook: 重新启动灰色遮罩监控');
+              console.log('ready hook: 重新设置灰色遮罩监听器');
             }, 100);
           }
         ],
@@ -397,18 +367,22 @@
             // 每次数据更新后重新设置灰色遮罩样式
             setTimeout(() => {
               setupGraySelectionMask(u);
-              console.log('setData hook: 数据更新后重新启动灰色遮罩监控');
+              console.log('setData hook: 数据更新后重新设置灰色遮罩监听器');
             }, 50);
           }
         ],
         setSelect: [
           (u: any) => {
             const select = u.select;
-            
-            // 处理选择操作
-            handleSelection(u, select);
-            
             const { left, top, width, height } = select;
+            
+            // 每次选择操作时，确保选择框有灰色样式
+            const selectDiv = u.root.querySelector('.u-select');
+            if (selectDiv && width > 0 && height > 0) {
+              // 立即应用灰色遮罩样式
+              forceApplyGrayMaskStyles(selectDiv as HTMLElement);
+              console.log('setSelect: 选择操作中，强制应用灰色遮罩样式');
+            }
             
             if (width > 10) { // 最小选择宽度
               // 立即隐藏选择遮罩，避免移动效果
@@ -487,7 +461,7 @@
       
       // 初始化完成后设置灰色遮罩监听器
       setupGraySelectionMask(uplot);
-      console.log('图表初始化完成，启动灰色遮罩监控');
+      console.log('图表初始化完成，设置灰色遮罩监听器');
     } catch (error) {
       console.error(`图表 ${chartName} 初始化失败:`, error);
       loadError = true;
@@ -559,7 +533,7 @@
         setTimeout(() => {
           if (uplot) {
             setupGraySelectionMask(uplot);
-            console.log('updateChart: 数据更新后重新启动灰色遮罩监控');
+            console.log('updateChart: 数据更新后重新设置灰色遮罩监听器');
           }
         }, 20);
       }, 100); // 延迟100ms，平滑动画
