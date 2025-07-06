@@ -85,7 +85,9 @@
     { name: '循环装置流量温度', selected: false },
     { name: '循环出口流量', selected: false },
     { name: '循环压力损失系数', selected: false },
-    { name: '喷管出口速度', selected: false }
+    { name: '喷管出口速度', selected: false },
+    { name: '喷管推力损失系数', selected: false }
+    
   ]);
 
   // data_chart_{id}数据存储 - 按照要求的格式：[{name:"曲线图-1";data:[[time,series1,series2,series3],...]}]
