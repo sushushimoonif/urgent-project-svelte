@@ -60,7 +60,7 @@
 
       // 动态创建script标签加载uPlot
       const script = document.createElement("script");
-      script.src = "/uPlot.iife.js";
+      script.src = "/lib/uPlot.iife.js";
       script.onload = () => {
         uPlot = (window as any).uPlot;
         if (uPlot) {
@@ -80,7 +80,7 @@
 
       // 检查script是否已经存在
       const existingScript = document.querySelector(
-        'script[src="/uPlot.iife.js"]',
+        'script[src="/lib/uPlot.iife.js"]',
       );
       if (!existingScript) {
         document.head.appendChild(script);
@@ -389,7 +389,7 @@
 
 <!-- uPlot CSS样式 -->
 <svelte:head>
-  <link rel="stylesheet" href="/uPlot.min.css" />
+  <link rel="stylesheet" href="/lib/uPlot.min.css" />
 </svelte:head>
 
 <div class="w-full h-full relative">

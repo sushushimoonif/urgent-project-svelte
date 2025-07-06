@@ -18,4 +18,3 @@
         <p class="text-label-color/70 text-xs">{unit}</p>
     </div>
 </div>
-Params
