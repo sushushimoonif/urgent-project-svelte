@@ -376,15 +376,15 @@
   <!-- 参数选择弹窗 - 可拖拽 -->
   {#if showParameterModal}
     <div 
-      class="fixed bg-gray-800 border border-gray-600 rounded-lg w-[600px] h-[500px] flex flex-col z-50 shadow-2xl"
+      class="fixed bg-gray-800 border border-gray-600 rounded-lg w-[600px] h-[600px] flex flex-col z-50 shadow-2xl"
       style="left: {parameterModalPosition.x}px; top: {parameterModalPosition.y}px;"
     >
       <!-- 弹窗标题 - 可拖拽区域 -->
       <div 
-        class="flex items-center justify-between p-4 border-b border-gray-600 cursor-move"
+        class="flex items-center justify-between px-6 py-4 border-b border-gray-600 cursor-move"
         onmousedown={handleModalMouseDown}
       >
-        <h3 class="text-lg font-medium text-gray-200">
+        <h3 class="text-xl font-medium text-gray-200">
           {currentEditingChartId !== null ? '编辑曲线图参数' : '参数选择'}
         </h3>
         <button class="text-gray-400 hover:text-gray-200" onclick={closeModals}>
@@ -395,71 +395,82 @@
       </div>
   
       <!-- 参数选择区域 -->
-      <div class="flex-1 flex overflow-hidden">
+      <div class="flex-1 flex overflow-hidden px-6 py-4">
         <!-- 左侧参数列表 -->
-        <div class="flex-1 p-4 overflow-y-auto">
-          <div class="space-y-3">
+        <div class="flex-1 pr-4 overflow-y-auto">
+          <div class="space-y-4">
             {#each leftParameters as param}
-              <div class="flex items-center gap-3 p-2 hover:bg-gray-700 rounded transition-colors">
+              <div class="flex items-center gap-4 py-2 hover:bg-gray-700 rounded transition-colors">
                 <div class="relative">
                   <input 
                     type="checkbox" 
                     bind:checked={param.selected} 
-                    class="w-5 h-5 rounded border-2 border-gray-500 bg-gray-700 text-green-500 focus:ring-2 focus:ring-green-500 focus:ring-offset-0 focus:ring-offset-gray-800"
+                    class="w-6 h-6 rounded border-2 border-gray-500 bg-gray-700 text-green-500 focus:ring-2 focus:ring-green-500 focus:ring-offset-0 focus:ring-offset-gray-800"
                   >
                   {#if param.selected}
-                    <svg class="absolute top-0 left-0 w-5 h-5 text-green-500 pointer-events-none" fill="currentColor" viewBox="0 0 20 20">
+                    <svg class="absolute top-0 left-0 w-6 h-6 text-green-500 pointer-events-none" fill="currentColor" viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                     </svg>
                   {/if}
                 </div>
-                <span class="text-sm text-gray-300 leading-tight">{param.name}</span>
+                <span class="text-base text-gray-300 leading-relaxed">{param.name}</span>
               </div>
+              <!-- 分隔线 -->
+              {#if param !== leftParameters[leftParameters.length - 1]}
+                <div class="border-b border-gray-600 opacity-50"></div>
+              {/if}
             {/each}
           </div>
         </div>
         
+        <!-- 中间分隔线 -->
+        <div class="w-px bg-gray-600 mx-4"></div>
+        
         <!-- 右侧参数列表 -->
-        <div class="flex-1 p-4 border-l border-gray-600 overflow-y-auto">
-          <div class="space-y-3">
+        <div class="flex-1 pl-4 overflow-y-auto">
+          <div class="space-y-4">
             {#each rightParameters as param}
-              <div class="flex items-center gap-3 p-2 hover:bg-gray-700 rounded transition-colors">
+              <div class="flex items-center gap-4 py-2 hover:bg-gray-700 rounded transition-colors">
                 <div class="relative">
                   <input 
                     type="checkbox" 
                     bind:checked={param.selected} 
-                    class="w-5 h-5 rounded border-2 border-gray-500 bg-gray-700 text-green-500 focus:ring-2 focus:ring-green-500 focus:ring-offset-0 focus:ring-offset-gray-800"
+                    class="w-6 h-6 rounded border-2 border-gray-500 bg-gray-700 text-green-500 focus:ring-2 focus:ring-green-500 focus:ring-offset-0 focus:ring-offset-gray-800"
                   >
                   {#if param.selected}
-                    <svg class="absolute top-0 left-0 w-5 h-5 text-green-500 pointer-events-none" fill="currentColor" viewBox="0 0 20 20">
+                    <svg class="absolute top-0 left-0 w-6 h-6 text-green-500 pointer-events-none" fill="currentColor" viewBox="0 0 20 20">
                       <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
                     </svg>
                   {/if}
                 </div>
-                <span class="text-sm text-gray-300 leading-tight">{param.name}</span>
+                <span class="text-base text-gray-300 leading-relaxed">{param.name}</span>
               </div>
+              <!-- 分隔线 -->
+              {#if param !== rightParameters[rightParameters.length - 1]}
+                <div class="border-b border-gray-600 opacity-50"></div>
+              {/if}
             {/each}
           </div>
         </div>
       </div>
   
-      <!-- 底部控制按钮 -->
-      <div class="p-4 border-t border-gray-600">
-        <div class="flex justify-end gap-3">
+      <!-- 底部控制按钮 - 居中显示 -->
+      <div class="px-6 py-6 border-t border-gray-600">
+        <div class="flex justify-center gap-6">
           <button 
-            class="px-6 py-2 bg-gray-600 hover:bg-gray-500 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+            class="px-8 py-3 bg-gray-600 hover:bg-gray-500 text-white text-base rounded-lg transition-colors flex items-center gap-3 min-w-[120px] justify-center"
             onclick={closeModals}
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
             关闭
           </button>
           <button 
-            class="px-6 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+            class="px-8 py-3 bg-green-600 hover:bg-green-700 text-white text-base rounded-lg transition-colors flex items-center gap-3 min-w-[120px] justify-center"
             onclick={confirmParameterSelection}
           >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
             </svg>
             确认
