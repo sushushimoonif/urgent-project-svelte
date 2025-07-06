@@ -447,12 +447,17 @@
     }
   }
 
-  // 更新选择框的位置和大小
+  // 更新选择框的位置和大小 - 纵坐标占满整个图表高度
   function updateSelectionRect() {
+    if (!uplot || !uplot.bbox) return;
+    
+    const bbox = uplot.bbox;
     const left = Math.min(selectionStart.x, selectionEnd.x);
-    const top = Math.min(selectionStart.y, selectionEnd.y);
     const width = Math.abs(selectionEnd.x - selectionStart.x);
-    const height = Math.abs(selectionEnd.y - selectionStart.y);
+    
+    // 纵坐标直接使用整个图表的高度范围
+    const top = bbox.top;
+    const height = bbox.height;
     
     selectionRect = { left, top, width, height };
   }
@@ -717,7 +722,7 @@
   </div>
   
   <!-- 自定义框选遮罩 - 显示框选过程 -->
-  {#if isSelecting && selectionRect.width > 5 && selectionRect.height > 5}
+  {#if isSelecting && selectionRect.width > 5}
     <div
       class="absolute pointer-events-none border-2 border-blue-500 bg-blue-500 bg-opacity-20 rounded"
       style="left: {selectionRect.left}px; top: {selectionRect.top}px; width: {selectionRect.width}px; height: {selectionRect.height}px; z-index: 10;"
