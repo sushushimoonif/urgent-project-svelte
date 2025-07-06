@@ -236,9 +236,9 @@
           key: `chart-${chartId}`,
         },
         drag: {
-          setScale: true, // 启用拖拽缩放
-          x: true,        // 允许X轴缩放
-          y: true,        // 允许Y轴缩放
+          setScale: false, // 禁用默认的拖拽缩放，我们自己处理
+          x: true,         // 允许X轴选择
+          y: true,         // 允许Y轴选择
         },
         points: {
           show: true,
@@ -271,49 +271,13 @@
         },
       },
       select: {
-        show: true,
+        show: true,  // 启用UPlot原生选择框
         left: 0,
         width: 0,
         top: 0,
         height: 0,
       },
       hooks: {
-        setSelect: [
-          (u: any) => {
-            // 当用户完成框选时触发
-            const { left, top, width, height } = u.select;
-            
-            // 隐藏自定义选择框
-            isSelecting = false;
-            
-            if (width > 10 && height > 10) { // 最小选择区域
-              // 保存原始范围（如果还没保存的话）
-              if (!isZoomed) {
-                const xScale = u.scales.x;
-                const yScale = u.scales.y;
-                originalXRange = [xScale.min, xScale.max];
-                originalYRange = [yScale.min, yScale.max];
-                isZoomed = true;
-              }
-              
-              // 计算选择区域对应的数据范围
-              const plotRect = u.bbox;
-              const xMin = u.posToVal(left, 'x');
-              const xMax = u.posToVal(left + width, 'x');
-              const yMin = u.posToVal(top + height, 'y');
-              const yMax = u.posToVal(top, 'y');
-              
-              // 应用新的缩放范围
-              u.setScale('x', { min: xMin, max: xMax });
-              u.setScale('y', { min: yMin, max: yMax });
-              
-              console.log(`图表 ${chartName} 缩放到范围: X[${xMin.toFixed(2)}, ${xMax.toFixed(2)}], Y[${yMin.toFixed(2)}, ${yMax.toFixed(2)}]`);
-            }
-            
-            // 清除选择框
-            u.setSelect({ left: 0, top: 0, width: 0, height: 0 }, false);
-          }
-        ],
         setSelect: [
           (u: any) => {
             // 当用户完成框选时触发
@@ -391,11 +355,6 @@
       // 添加双击事件监听器来重置缩放
       currentContainer.addEventListener('dblclick', handleDoubleClick);
       
-      // 添加鼠标事件监听器来处理自定义选择框
-      currentContainer.addEventListener('mousedown', handleMouseDown);
-      currentContainer.addEventListener('mousemove', handleMouseMove);
-      currentContainer.addEventListener('mouseup', handleMouseUp);
-      
       console.log(`图表 ${chartName} 初始化成功，数据点数: ${data.length}, 全屏模式: ${isFullscreen}`);
       isLoading = false;
     } catch (error) {
@@ -403,63 +362,6 @@
       loadError = true;
       isLoading = false;
     }
-  }
-
-  // 鼠标按下事件 - 开始框选
-  function handleMouseDown(event: MouseEvent) {
-    if (event.button === 0) { // 只处理左键
-      const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
-      
-      // 检查是否在图表绘制区域内
-      if (uplot && uplot.bbox) {
-        const bbox = uplot.bbox;
-        if (x >= bbox.left && x <= bbox.left + bbox.width && 
-            y >= bbox.top && y <= bbox.top + bbox.height) {
-          isSelecting = true;
-          selectionStart = { x, y };
-          selectionEnd = { x, y };
-          updateSelectionRect();
-        }
-      }
-    }
-  }
-
-  // 鼠标移动事件 - 更新框选区域
-  function handleMouseMove(event: MouseEvent) {
-    if (isSelecting) {
-      const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
-      
-      selectionEnd = { x, y };
-      updateSelectionRect();
-      event.preventDefault();
-    }
-  }
-
-  // 鼠标抬起事件 - 结束框选
-  function handleMouseUp(event: MouseEvent) {
-    if (isSelecting) {
-      isSelecting = false;
-      // UPlot的内置选择处理会自动触发
-    }
-  }
-
-  // 更新选择框的位置和大小 - 纵坐标占满整个图表高度
-  function updateSelectionRect() {
-    if (!uplot || !uplot.bbox) return;
-    
-    const bbox = uplot.bbox;
-    const left = Math.min(selectionStart.x, selectionEnd.x);
-    const width = Math.abs(selectionEnd.x - selectionStart.x);
-    
-    // 纵坐标直接使用整个图表的高度范围
-    const top = bbox.top;
-    const height = bbox.height;
-    
-    selectionRect = { left, top, width, height };
   }
 
   // 双击重置缩放
@@ -577,9 +479,6 @@
       const currentContainer = isFullscreen ? fullscreenChartContainer : chartContainer;
       if (currentContainer) {
         currentContainer.removeEventListener('dblclick', handleDoubleClick);
-        currentContainer.removeEventListener('mousedown', handleMouseDown);
-        currentContainer.removeEventListener('mousemove', handleMouseMove);
-        currentContainer.removeEventListener('mouseup', handleMouseUp);
       }
       
       uplot.destroy();
@@ -721,19 +620,6 @@
     {/if}
   </div>
   
-  <!-- 自定义框选遮罩 - 显示框选过程 -->
-  {#if isSelecting && selectionRect.width > 5}
-    <div
-      class="absolute pointer-events-none border-2 border-blue-500 bg-blue-500 bg-opacity-20 rounded"
-      style="left: {selectionRect.left}px; top: {selectionRect.top}px; width: {selectionRect.width}px; height: {selectionRect.height}px; z-index: 10;"
-    >
-      <!-- 选择框角标 -->
-      <div class="absolute -top-6 left-0 bg-blue-500 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-        框选缩放区域
-      </div>
-    </div>
-  {/if}
-
   <!-- 自定义Tooltip - 半透明小框，位置在鼠标左上方，透明度70% -->
   {#if showTooltip}
     <div
