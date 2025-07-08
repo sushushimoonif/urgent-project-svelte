@@ -222,6 +222,9 @@
                                         curves={chart.curves}
                                         data={realTimeChartDataSets.get(chart.id)?.data || []}
                                         syncGroup="realtime-charts"
+                                        subplotMode={true}
+                                        subplotHeight={120}
+                                        xAxisLabel="时间 (秒)"
                                     />
                                 </div>
                             </div>

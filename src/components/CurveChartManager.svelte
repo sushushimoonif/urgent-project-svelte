@@ -177,7 +177,11 @@
         // 编辑现有曲线图
         const chart = charts.find(c => c.id === currentEditingChartId);
         if (chart) {
-          chart.curves = selectedParams.map(p => ({ name: p.name }));
+          chart.curves = selectedParams.map(p => ({ 
+            name: p.name, 
+            unit: p.unit, 
+            color: p.color 
+          }));
           charts = [...charts]; // 触发响应式更新
           onChartsChange?.(charts);
         }
@@ -187,7 +191,11 @@
           const newChart = {
             id: Date.now(),
             name: `曲线图-${charts.length + 1}`,
-            curves: selectedParams.map(p => ({ name: p.name }))
+            curves: selectedParams.map(p => ({ 
+              name: p.name, 
+              unit: p.unit, 
+              color: p.color 
+            }))
           };
           charts = [...charts, newChart];
           onChartsChange?.(charts);

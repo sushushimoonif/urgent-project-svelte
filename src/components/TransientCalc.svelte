@@ -783,6 +783,9 @@
                         curves={chart.curves}
                         data={chartDataSets.get(chart.id)?.data || []}
                         syncGroup="transient-charts"
+                        subplotMode={true}
+                        subplotHeight={120}
+                        xAxisLabel="时间 (秒)"
                       />
                     </div>
                   </div>
