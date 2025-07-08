@@ -1,7 +1,7 @@
 <script lang="ts">
   import CurveChartManager from './CurveChartManager.svelte';
   import RealTimeMonitor from './RealTimeMonitor.svelte';
-  import MultiAxisUPlotChart from './MultiAxisUPlotChart.svelte';
+  import UPlotChart from './UPlotChart.svelte';
 
   let isCalculating = $state(false);
   let showResults = $state(false);
@@ -25,27 +25,27 @@
       id: 1,
       name: '曲线图-1',
       curves: [
-        { name: '高压涡轮出口总压', unit: 'kPa', yAxisLabel: '压力 (kPa)' },
-        { name: '高压压气机出口总压', unit: 'kPa', yAxisLabel: '压力 (kPa)' },
-        { name: '低压涡轮出口总压', unit: 'kPa', yAxisLabel: '压力 (kPa)' }
+        { name: '高压涡轮出口总压' },
+        { name: '高压压气机出口总压' },
+        { name: '低压涡轮出口总压' }
       ]
     },
     {
       id: 2,
       name: '曲线图-2', 
       curves: [
-        { name: '低压涡轮出口温度', unit: 'K', yAxisLabel: '温度 (K)' },
-        { name: '风扇出口总压', unit: 'kPa', yAxisLabel: '压力 (kPa)' },
-        { name: '高压压气机出口温度', unit: 'K', yAxisLabel: '温度 (K)' }
+        { name: '低压涡轮出口温度' },
+        { name: '风扇出口总压' },
+        { name: '高压压气机出口温度' }
       ]
     },
     {
       id: 3,
       name: '曲线图-3',
       curves: [
-        { name: '高压涡轮进口温度', unit: 'K', yAxisLabel: '温度 (K)' },
-        { name: '低压涡轮进口温度', unit: 'K', yAxisLabel: '温度 (K)' },
-        { name: '喷管出口速度', unit: 'm/s', yAxisLabel: '速度 (m/s)' }
+        { name: '高压涡轮进口温度' },
+        { name: '低压涡轮进口温度' },
+        { name: '喷管出口速度' }
       ]
     }
   ]);
@@ -777,7 +777,7 @@
 
                     <!-- uPlot图表容器 -->
                     <div class="bg-gray-900 rounded-lg p-4 border border-gray-600">
-                      <MultiAxisUPlotChart 
+                      <UPlotChart 
                         chartId={chart.id}
                         chartName={chart.name}
                         curves={chart.curves}
