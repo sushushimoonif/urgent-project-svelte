@@ -28,8 +28,8 @@
     xRange, 
     syncGroup = 'default',
     subplotMode = false,
-    subplotHeight = 150,
-    xAxisLabel = "反应坐标"
+    subplotHeight = 120,
+    xAxisLabel = "时间"
   }: Props = $props();
 
   let chartContainer: HTMLDivElement;
@@ -195,8 +195,9 @@
     currentContainer.innerHTML = '';
     subplotContainers = [];
 
-    // 计算总高度和单个子图高度
-    const totalHeight = isFullscreen ? window.innerHeight - 200 : curves.length * subplotHeight + 100;
+    // 自适应高度计算 - 确保刚好容纳所有子图
+    const adaptiveSubplotHeight = Math.max(80, Math.min(subplotHeight, 200));
+    const totalHeight = isFullscreen ? window.innerHeight - 200 : curves.length * adaptiveSubplotHeight + 40;
     const containerWidth = isFullscreen ? window.innerWidth - 100 : currentContainer.clientWidth;
 
     // 创建主容器
@@ -222,7 +223,7 @@
       const subplotContainer = document.createElement('div');
       subplotContainer.style.cssText = `
         width: 100%;
-        height: ${subplotHeight}px;
+        height: ${adaptiveSubplotHeight}px;
         border-bottom: ${isLastSubplot ? 'none' : '1px solid #374151'};
         position: relative;
       `;
@@ -249,15 +250,15 @@
 
       const opts = {
         width: containerWidth,
-        height: subplotHeight,
+        height: adaptiveSubplotHeight,
         series: series,
         axes: [
           {
             // X轴配置
-            show: isLastSubplot, // 只在最后一个子图显示X轴
-            label: isLastSubplot ? xAxisLabel : "",
-            labelSize: 14,
-            labelFont: "14px Arial, sans-serif",
+            show: true, // 显示X轴直线
+            label: "", // 移除X轴标题
+            labelSize: 0,
+            labelFont: "12px Arial, sans-serif",
             stroke: "#e5e7eb",
             grid: {
               show: true,
@@ -273,8 +274,9 @@
           },
           {
             // Y轴配置
-            label: `${curve.name}${curve.unit ? ` (${curve.unit})` : ''}`,
-            labelSize: 12,
+            show: true, // 显示Y轴直线
+            label: "", // 移除Y轴标题文本
+            labelSize: 0,
             labelFont: "12px Arial, sans-serif",
             stroke: curve.color || subplotColors[index % subplotColors.length],
             grid: {
@@ -492,9 +494,10 @@
       series: series,
       axes: [
         {
-          label: xAxisLabel,
-          labelSize: 14,
-          labelFont: "14px Arial, sans-serif",
+          show: true, // 显示X轴直线
+          label: "", // 移除X轴标题
+          labelSize: 0,
+          labelFont: "12px Arial, sans-serif",
           stroke: "#e5e7eb",
           grid: {
             show: true,
@@ -509,8 +512,9 @@
           },
         },
         {
-          label: "数值",
-          labelSize: 12,
+          show: true, // 显示Y轴直线
+          label: "", // 移除Y轴标题
+          labelSize: 0,
           labelFont: "12px Arial, sans-serif",
           stroke: "#9ca3af",
           grid: {
@@ -897,7 +901,7 @@
     <div
       bind:this={chartContainer}
       class="w-full bg-gray-900 rounded border border-gray-600 relative"
-      style="min-height: {subplotMode ? curves.length * subplotHeight + 50 : 300}px;"
+      style="height: {subplotMode ? Math.max(curves.length * Math.max(80, Math.min(subplotHeight, 200)) + 40, 300) : 300}px;"
     >
       {#if isLoading}
         <!-- 加载状态 -->

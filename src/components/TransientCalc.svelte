@@ -770,9 +770,6 @@
                         </svg>
                         {chart.name}
                       </h3>
-                      <div class="text-xs text-gray-400">
-                        data_chart_{chart.id}: {chartDataSets.get(chart.id)?.data.length || 0} 点
-                      </div>
                     </div>
 
                     <!-- uPlot图表容器 -->
@@ -784,7 +781,7 @@
                         data={chartDataSets.get(chart.id)?.data || []}
                         syncGroup="transient-charts"
                         subplotMode={true}
-                        subplotHeight={120}
+                        subplotHeight={100}
                         xAxisLabel="时间 (秒)"
                       />
                     </div>

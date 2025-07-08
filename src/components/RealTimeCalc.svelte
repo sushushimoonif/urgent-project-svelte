@@ -209,9 +209,6 @@
                                         </svg>
                                         {chart.name}
                                     </h3>
-                                    <div class="text-xs text-gray-400">
-                                        实时数据: {realTimeChartDataSets.get(chart.id)?.data.length || 0} 点
-                                    </div>
                                 </div>
 
                                 <!-- uPlot图表容器 - 使用实时同步组 -->
@@ -223,7 +220,7 @@
                                         data={realTimeChartDataSets.get(chart.id)?.data || []}
                                         syncGroup="realtime-charts"
                                         subplotMode={true}
-                                        subplotHeight={120}
+                                        subplotHeight={100}
                                         xAxisLabel="时间 (秒)"
                                     />
                                 </div>
