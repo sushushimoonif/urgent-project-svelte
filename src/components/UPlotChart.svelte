@@ -11,11 +11,20 @@
     chartName: string;
     curves: Curve[];
     data: number[][];
-    xRange?: number[] | null; // 可选
-    syncGroup?: string; // 新增：同步组标识
+    xRange?: number[] | null;
+    syncGroup?: string;
+    useSubplots?: boolean; // 新增：是否使用子图模式
   }
 
-  let { chartId, chartName, curves, data, xRange, syncGroup = 'default' }: Props = $props();
+  let { 
+    chartId, 
+    chartName, 
+    curves, 
+    data, 
+    xRange, 
+    syncGroup = 'default',
+    useSubplots = true // 默认启用子图模式
+  }: Props = $props();
 
   let chartContainer: HTMLDivElement;
   let fullscreenChartContainer: HTMLDivElement;
@@ -33,14 +42,8 @@
   let originalXRange = $state<[number, number] | null>(null);
   let originalYRange = $state<[number, number] | null>(null);
   let isZoomed = $state(false);
-  
-  // 框选状态管理
-  let isSelecting = $state(false);
-  let selectionStart = $state({ x: 0, y: 0 });
-  let selectionEnd = $state({ x: 0, y: 0 });
-  let selectionRect = $state({ left: 0, top: 0, width: 0, height: 0 });
 
-  // Tooltip状态 - 修改位置为鼠标左上方，半透明度改为70%
+  // Tooltip状态
   let showTooltip = $state(false);
   let tooltipPosition = $state({ x: 0, y: 0 });
   let tooltipData = $state<{
@@ -61,10 +64,9 @@
     "#f97316", // 橙色
   ];
 
-  // 全局游标同步存储 - 按同步组分组
+  // 全局游标同步存储
   const globalCursorStores = new Map<string, any>();
   
-  // 获取或创建同步组的游标存储
   function getCursorSyncStore(group: string) {
     if (!globalCursorStores.has(group)) {
       globalCursorStores.set(group, writable({
@@ -80,10 +82,7 @@
   // 全屏切换函数
   function toggleFullscreen() {
     isFullscreen = !isFullscreen;
-    
-    // 延迟重新初始化图表，确保容器准备好
     setTimeout(() => {
-      // 重新初始化图表以适应新容器
       initChart();
     }, 300);
   }
@@ -96,7 +95,6 @@
       isLoading = true;
       loadError = false;
 
-      // 检查uPlot是否已经加载
       if ((window as any).uPlot) {
         uPlot = (window as any).uPlot;
         console.log("uPlot库已存在");
@@ -104,7 +102,6 @@
         return;
       }
 
-      // 动态创建script标签加载uPlot
       const script = document.createElement("script");
       script.src = "/lib/uPlot.iife.js";
       script.onload = () => {
@@ -124,14 +121,10 @@
         isLoading = false;
       };
 
-      // 检查script是否已经存在
-      const existingScript = document.querySelector(
-        'script[src="/lib/uPlot.iife.js"]',
-      );
+      const existingScript = document.querySelector('script[src="/lib/uPlot.iife.js"]');
       if (!existingScript) {
         document.head.appendChild(script);
       } else {
-        // 如果script已存在，等待加载完成
         if ((window as any).uPlot) {
           uPlot = (window as any).uPlot;
           initChart();
@@ -157,7 +150,6 @@
 
   // 初始化图表
   function initChart() {
-    // 根据当前模式选择正确的容器
     const currentContainer = isFullscreen ? fullscreenChartContainer : chartContainer;
     
     if (!uPlot || !currentContainer) {
@@ -171,96 +163,140 @@
       uplot = null;
     }
 
-    // 构建series配置
+    if (useSubplots) {
+      initSubplotChart(currentContainer);
+    } else {
+      initSingleChart(currentContainer);
+    }
+  }
+
+  // 初始化子图模式
+  function initSubplotChart(container: HTMLElement) {
+    const containerWidth = isFullscreen ? window.innerWidth - 100 : (container.clientWidth || 800);
+    const totalHeight = isFullscreen ? window.innerHeight - 200 : 400;
+    const subplotHeight = Math.floor(totalHeight / curves.length);
+    
+    // 构建多子图的series配置
     const series = [
       {
         label: "时间",
         stroke: "transparent",
         fill: "transparent",
-      },
-      ...curves.map((curve, index) => ({
+      }
+    ];
+
+    // 为每个曲线创建一个series
+    curves.forEach((curve, index) => {
+      series.push({
         label: curve.name,
         stroke: colors[index % colors.length],
-        width: 1,
+        width: 2,
         fill: "transparent",
+        scale: `y${index}`, // 每个曲线使用独立的Y轴刻度
         points: {
           show: false,
         },
-      })),
+      });
+    });
+
+    // 构建多个Y轴配置
+    const axes = [
+      // X轴配置
+      {
+        label: "时间 (秒)",
+        labelSize: 12,
+        labelFont: "12px monospace",
+        stroke: "#e5e7eb",
+        grid: {
+          show: true,
+          stroke: "#4b5563",
+          width: 1,
+        },
+        ticks: {
+          show: true,
+          stroke: "#d1d5db",
+          width: 1,
+          size: 8,
+        },
+        splits: (u: any, axisIdx: number, scaleMin: number, scaleMax: number, foundIncr: number) => {
+          const customIncr = foundIncr * 2;
+          const splits = [];
+          let val = Math.ceil(scaleMin / customIncr) * customIncr;
+          while (val <= scaleMax) {
+            splits.push(val);
+            val += customIncr;
+          }
+          return splits;
+        },
+      }
     ];
 
-    // uPlot配置
+    // 为每个曲线创建独立的Y轴
+    curves.forEach((curve, index) => {
+      axes.push({
+        scale: `y${index}`,
+        label: curve.name,
+        labelSize: 10,
+        labelFont: "10px monospace",
+        stroke: colors[index % colors.length],
+        side: 3, // 左侧
+        size: 60,
+        grid: {
+          show: index === 0, // 只在第一个子图显示网格
+          stroke: "#374151",
+          width: 1,
+        },
+        ticks: {
+          show: true,
+          stroke: colors[index % colors.length],
+          width: 1,
+        },
+        // 设置子图的垂直位置
+        space: (self: any, axisIdx: number, scaleMin: number, scaleMax: number, plotDim: number) => {
+          return subplotHeight;
+        }
+      });
+    });
+
+    // 构建scales配置
+    const scales: any = {
+      x: {
+        time: false,
+        auto: !xRange || xRange.length !== 2,
+        ...(xRange && xRange.length === 2 ? { range: () => xRange } : {}),
+      }
+    };
+
+    // 为每个曲线创建独立的Y轴刻度
+    curves.forEach((curve, index) => {
+      scales[`y${index}`] = {
+        auto: true,
+        range: (u: any, dataMin: number, dataMax: number) => {
+          const range = dataMax - dataMin;
+          const margin = range * 0.1;
+          return [dataMin - margin, dataMax + margin];
+        },
+      };
+    });
+
     const opts = {
-      // title: chartName,
-      width: isFullscreen ? window.innerWidth - 100 : (currentContainer.clientWidth || 800),
-      height: isFullscreen ? window.innerHeight - 200 : 300,
+      width: containerWidth,
+      height: totalHeight,
       series: series,
-      axes: [
-  {
-    label: "时间 (秒)",
-    labelSize: 12,
-    labelFont: "12px monospace",
-    stroke: "#e5e7eb", // 改为浅灰色提升对比度
-    grid: {
-      show: true,
-      stroke: "#4b5563", // 加深网格线颜色
-      width: 1,
-    },
-    ticks: {
-      show: true,
-      stroke: "#d1d5db", // 刻度线颜色调整为浅灰
-      width: 1,
-      size: 8,          // 适当增加刻度线长度
-    },
-          // 增大X轴刻度间隔
-          splits: (
-            u: any,
-            axisIdx: number,
-            scaleMin: number,
-            scaleMax: number,
-            foundIncr: number,
-            foundSpace: number,
-          ) => {
-            // 将刻度间隔增大2倍，使滚动更慢
-            const customIncr = foundIncr * 2;
-            const splits = [];
-            let val = Math.ceil(scaleMin / customIncr) * customIncr;
-            while (val <= scaleMax) {
-              splits.push(val);
-              val += customIncr;
-            }
-            return splits;
-          },
-        },
-        {
-          label: "数值",
-          labelSize: 12,
-          labelFont: "12px monospace",
-          stroke: "#9ca3af",
-          grid: {
-            show: true,
-            stroke: "#374151",
-            width: 1,
-          },
-          ticks: {
-            show: true,
-            stroke: "#6b7280",
-            width: 1,
-          },
-        },
-      ],
+      axes: axes,
+      scales: scales,
       legend: {
-        show: false, // 删除图例
+        show: false,
       },
       cursor: {
         show: true,
         sync: {
-          key: syncGroup, // 使用同步组作为key
+          key: syncGroup,
         },
         drag: {
-          setScale: false, // 禁用默认的拖拽缩放
+          setScale: false,
           x: true,
-          y: false,        // 只允许X轴选择，Y轴自动占满
+          y: false,
         },
         points: {
           show: true,
@@ -272,53 +308,24 @@
           fill: "#1f2937",
         },
       },
-      scales: {
-        x: {
-          time: false,
-          auto: !xRange || xRange.length !== 2,
-          ...(xRange && xRange.length === 2
-            ? {
-                range: () => xRange,
-              }
-            : {}),
-        },
-        y: {
-          auto: true,
-          range: (u: any, dataMin: number, dataMax: number) => {
-            // 自动调整Y轴范围，添加10%的边距
-            const range = dataMax - dataMin;
-            const margin = range * 0.1;
-            return [dataMin - margin, dataMax + margin];
-          },
-        },
-      },
       hooks: {
         setSelect: [
           (u: any) => {
             const select = u.select;
             const { left, top, width, height } = select;
             
-            console.log(`setSelect hook: 图表 ${chartName} 选择操作`, { width, height });
-            
-            if (width > 10) { // 最小选择宽度
-              // 保存原始范围（如果还没保存的话）
+            if (width > 10) {
               if (!isZoomed) {
                 const xScale = u.scales.x;
                 originalXRange = [xScale.min, xScale.max];
                 isZoomed = true;
               }
               
-              // 计算选择区域对应的数据范围
               const xMin = u.posToVal(left, 'x');
               const xMax = u.posToVal(left + width, 'x');
               
-              // 只缩放X轴，Y轴保持自动调整
               u.setScale('x', { min: xMin, max: xMax });
-              
-              // 清除选择状态
               u.setSelect({ left: 0, top: 0, width: 0, height: 0 }, false);
-              
-              console.log(`图表 ${chartName} 缩放到X轴范围: [${xMin.toFixed(2)}, ${xMax.toFixed(2)}]`);
             }
           }
         ],
@@ -326,10 +333,8 @@
           (u: any) => {
             const { left, top, idx } = u.cursor;
             
-            // 防止循环更新
             if (isUpdatingCursor) return;
             
-            // 更新同步存储
             if (cursorSyncStore && idx !== null && idx !== undefined) {
               cursorSyncStore.set({
                 idx,
@@ -340,17 +345,14 @@
             }
 
             if (idx !== null && idx !== undefined && data[idx]) {
-              // 显示tooltip
               showTooltip = true;
 
-              // 计算tooltip位置（小框的左上方为鼠标位置）
               const rect = u.root.getBoundingClientRect();
               tooltipPosition = {
-                x: left + rect.left, // 鼠标X位置作为小框左上角
-                y: top + rect.top, // 鼠标Y位置作为小框左上角
+                x: left + rect.left,
+                y: top + rect.top,
               };
 
-              // 构建tooltip数据
               const timeValue = data[idx][0];
               const values = curves.map((curve, index) => ({
                 name: curve.name,
@@ -363,37 +365,53 @@
                 values: values,
               };
             } else {
-              // 隐藏tooltip
               showTooltip = false;
             }
           },
         ],
+        // 自定义绘制钩子 - 实现子图分离
+        draw: [
+          (u: any) => {
+            const { ctx, bbox } = u;
+            const { left, top, width, height } = bbox;
+            
+            // 绘制子图分隔线
+            ctx.save();
+            ctx.strokeStyle = "#4b5563";
+            ctx.lineWidth = 1;
+            
+            for (let i = 1; i < curves.length; i++) {
+              const y = top + (i * subplotHeight);
+              ctx.beginPath();
+              ctx.moveTo(left, y);
+              ctx.lineTo(left + width, y);
+              ctx.stroke();
+            }
+            
+            ctx.restore();
+          }
+        ]
       },
     };
 
     try {
-      // 初始化游标同步
       cursorSyncStore = getCursorSyncStore(syncGroup);
       
-      // 创建uPlot实例
-      const transformedData = transformDataForUPlot(data);
-      uplot = new uPlot(opts, transformedData, currentContainer);
+      const transformedData = transformDataForSubplots(data);
+      uplot = new uPlot(opts, transformedData, container);
       
-      // 订阅游标同步
+      // 游标同步订阅
       const unsubscribe = cursorSyncStore.subscribe((syncData: any) => {
         if (syncData.sourceChartId !== chartId && syncData.idx !== null && uplot) {
-          // 防止循环更新
           isUpdatingCursor = true;
           
           try {
-            // 同步游标位置
             uplot.setCursor({
               left: syncData.left,
               top: syncData.top,
               idx: syncData.idx
             });
             
-            // 更新tooltip显示
             if (data[syncData.idx]) {
               showTooltip = true;
               
@@ -418,7 +436,6 @@
           } catch (error) {
             console.error(`图表 ${chartName} 游标同步失败:`, error);
           } finally {
-            // 延迟重置标志，避免立即触发
             setTimeout(() => {
               isUpdatingCursor = false;
             }, 10);
@@ -426,16 +443,234 @@
         }
       });
       
-      // 保存取消订阅函数，用于清理
       (uplot as any)._cursorUnsubscribe = unsubscribe;
+      container.addEventListener('dblclick', handleDoubleClick);
       
-      // 添加双击事件监听器来重置缩放
-      currentContainer.addEventListener('dblclick', handleDoubleClick);
-      
-      console.log(`图表 ${chartName} 初始化成功，数据点数: ${data.length}, 全屏模式: ${isFullscreen}`);
+      console.log(`子图模式图表 ${chartName} 初始化成功，子图数量: ${curves.length}`);
       isLoading = false;
     } catch (error) {
-      console.error(`图表 ${chartName} 初始化失败:`, error);
+      console.error(`子图模式图表 ${chartName} 初始化失败:`, error);
+      loadError = true;
+      isLoading = false;
+    }
+  }
+
+  // 初始化单图模式（原有功能）
+  function initSingleChart(container: HTMLElement) {
+    // 原有的单图初始化逻辑...
+    const series = [
+      {
+        label: "时间",
+        stroke: "transparent",
+        fill: "transparent",
+      },
+      ...curves.map((curve, index) => ({
+        label: curve.name,
+        stroke: colors[index % colors.length],
+        width: 1,
+        fill: "transparent",
+        points: {
+          show: false,
+        },
+      })),
+    ];
+
+    const opts = {
+      width: isFullscreen ? window.innerWidth - 100 : (container.clientWidth || 800),
+      height: isFullscreen ? window.innerHeight - 200 : 300,
+      series: series,
+      axes: [
+        {
+          label: "时间 (秒)",
+          labelSize: 12,
+          labelFont: "12px monospace",
+          stroke: "#e5e7eb",
+          grid: {
+            show: true,
+            stroke: "#4b5563",
+            width: 1,
+          },
+          ticks: {
+            show: true,
+            stroke: "#d1d5db",
+            width: 1,
+            size: 8,
+          },
+        },
+        {
+          label: "数值",
+          labelSize: 12,
+          labelFont: "12px monospace",
+          stroke: "#9ca3af",
+          grid: {
+            show: true,
+            stroke: "#374151",
+            width: 1,
+          },
+          ticks: {
+            show: true,
+            stroke: "#6b7280",
+            width: 1,
+          },
+        },
+      ],
+      legend: {
+        show: false,
+      },
+      cursor: {
+        show: true,
+        sync: {
+          key: syncGroup,
+        },
+        drag: {
+          setScale: false,
+          x: true,
+          y: false,
+        },
+        points: {
+          show: true,
+          size: 6,
+          width: 1,
+          stroke: (u: any, seriesIdx: number) => {
+            return series[seriesIdx]?.stroke || "#666";
+          },
+          fill: "#1f2937",
+        },
+      },
+      scales: {
+        x: {
+          time: false,
+          auto: !xRange || xRange.length !== 2,
+          ...(xRange && xRange.length === 2 ? { range: () => xRange } : {}),
+        },
+        y: {
+          auto: true,
+          range: (u: any, dataMin: number, dataMax: number) => {
+            const range = dataMax - dataMin;
+            const margin = range * 0.1;
+            return [dataMin - margin, dataMax + margin];
+          },
+        },
+      },
+      hooks: {
+        setSelect: [
+          (u: any) => {
+            const select = u.select;
+            const { left, top, width, height } = select;
+            
+            if (width > 10) {
+              if (!isZoomed) {
+                const xScale = u.scales.x;
+                originalXRange = [xScale.min, xScale.max];
+                isZoomed = true;
+              }
+              
+              const xMin = u.posToVal(left, 'x');
+              const xMax = u.posToVal(left + width, 'x');
+              
+              u.setScale('x', { min: xMin, max: xMax });
+              u.setSelect({ left: 0, top: 0, width: 0, height: 0 }, false);
+            }
+          }
+        ],
+        setCursor: [
+          (u: any) => {
+            const { left, top, idx } = u.cursor;
+            
+            if (isUpdatingCursor) return;
+            
+            if (cursorSyncStore && idx !== null && idx !== undefined) {
+              cursorSyncStore.set({
+                idx,
+                left,
+                top,
+                sourceChartId: chartId
+              });
+            }
+
+            if (idx !== null && idx !== undefined && data[idx]) {
+              showTooltip = true;
+
+              const rect = u.root.getBoundingClientRect();
+              tooltipPosition = {
+                x: left + rect.left,
+                y: top + rect.top,
+              };
+
+              const timeValue = data[idx][0];
+              const values = curves.map((curve, index) => ({
+                name: curve.name,
+                value: data[idx][index + 1]?.toFixed(3) || "0.000",
+                color: colors[index % colors.length],
+              }));
+
+              tooltipData = {
+                time: `时间: ${timeValue.toFixed(3)}s`,
+                values: values,
+              };
+            } else {
+              showTooltip = false;
+            }
+          },
+        ],
+      },
+    };
+
+    try {
+      cursorSyncStore = getCursorSyncStore(syncGroup);
+      
+      const transformedData = transformDataForUPlot(data);
+      uplot = new uPlot(opts, transformedData, container);
+      
+      const unsubscribe = cursorSyncStore.subscribe((syncData: any) => {
+        if (syncData.sourceChartId !== chartId && syncData.idx !== null && uplot) {
+          isUpdatingCursor = true;
+          
+          try {
+            uplot.setCursor({
+              left: syncData.left,
+              top: syncData.top,
+              idx: syncData.idx
+            });
+            
+            if (data[syncData.idx]) {
+              showTooltip = true;
+              
+              const rect = uplot.root.getBoundingClientRect();
+              tooltipPosition = {
+                x: syncData.left + rect.left,
+                y: syncData.top + rect.top,
+              };
+              
+              const timeValue = data[syncData.idx][0];
+              const values = curves.map((curve, index) => ({
+                name: curve.name,
+                value: data[syncData.idx][index + 1]?.toFixed(3) || "0.000",
+                color: colors[index % colors.length],
+              }));
+              
+              tooltipData = {
+                time: `时间: ${timeValue.toFixed(3)}s`,
+                values: values,
+              };
+            }
+          } catch (error) {
+            console.error(`图表 ${chartName} 游标同步失败:`, error);
+          } finally {
+            setTimeout(() => {
+              isUpdatingCursor = false;
+            }, 10);
+          }
+        }
+      });
+      
+      (uplot as any)._cursorUnsubscribe = unsubscribe;
+      container.addEventListener('dblclick', handleDoubleClick);
+      
+      console.log(`单图模式图表 ${chartName} 初始化成功`);
+      isLoading = false;
+    } catch (error) {
+      console.error(`单图模式图表 ${chartName} 初始化失败:`, error);
       loadError = true;
       isLoading = false;
     }
@@ -444,29 +679,35 @@
   // 双击重置缩放
   function handleDoubleClick(event: MouseEvent) {
     if (uplot && isZoomed && originalXRange) {
-      // 重置到原始范围
       uplot.setScale('x', { min: originalXRange[0], max: originalXRange[1] });
-      
-      // 重置缩放状态
       isZoomed = false;
       originalXRange = null;
-      
       console.log(`图表 ${chartName} 缩放已重置`);
       event.preventDefault();
     }
   }
 
-  // 将数据转换为uPlot格式
-  function transformDataForUPlot(inputData: number[][]): number[][] {
+  // 转换数据为子图格式
+  function transformDataForSubplots(inputData: number[][]): number[][] {
     if (!inputData || inputData.length === 0) {
-      // 返回空数据结构
       return [[], ...curves.map(() => [])];
     }
 
-    // 提取时间轴数据（第一列）
     const timeData = inputData.map((row) => row[0] || 0);
+    const seriesData = curves.map((_, index) => {
+      return inputData.map((row) => row[index + 1] || 0);
+    });
 
-    // 提取每条曲线的数据（从第二列开始）
+    return [timeData, ...seriesData];
+  }
+
+  // 转换数据为uPlot格式（单图模式）
+  function transformDataForUPlot(inputData: number[][]): number[][] {
+    if (!inputData || inputData.length === 0) {
+      return [[], ...curves.map(() => [])];
+    }
+
+    const timeData = inputData.map((row) => row[0] || 0);
     const seriesData = curves.map((_, index) => {
       return inputData.map((row) => row[index + 1] || 0);
     });
@@ -478,35 +719,25 @@
     if (!uplot || !data) return;
 
     try {
-      const transformedData = transformDataForUPlot(data);
+      const transformedData = useSubplots ? transformDataForSubplots(data) : transformDataForUPlot(data);
 
-      // 使用 setTimeout 来延迟更新，使动画更平滑
       setTimeout(() => {
         uplot.setData(transformedData);
 
-        // 从第 10 秒开始，固定左边界为 0
         if (data.length > 20) {
           const latestTime = data[data.length - 1][0];
-          const windowSize =
-            (data[data.length - 1][0] -
-              data[Math.max(0, data.length - 20)][0]) *
-            1.5;
-
-          // 增大窗口大小，平滑滚动
           setTimeout(() => {
             uplot.setScale("x", {
-              min: 0, // 固定最左边为0
+              min: 0,
               max: latestTime,
             });
-          }, 150); // 增加延迟，使滚动平滑
+          }, 150);
         }
         
-        // 数据更新后重新确保灰色遮罩样式
         setTimeout(() => {
-          // 数据更新完成
           console.log(`🔄 updateChart: 图表 ${chartName} 数据更新完成`);
         }, 20);
-      }, 100); // 延迟100ms，平滑动画
+      }, 100);
 
       console.log(`图表 ${chartName} 数据更新成功，当前数据点: ${data.length}`);
     } catch (error) {
@@ -524,7 +755,6 @@
   // 响应式更新曲线配置
   $effect(() => {
     if (curves && uplot) {
-      // 曲线配置变化时重新初始化
       initChart();
     }
   });
@@ -535,7 +765,7 @@
       if (!currentContainer) return;
       
       const newWidth = isFullscreen ? window.innerWidth - 100 : currentContainer.clientWidth;
-      const newHeight = isFullscreen ? window.innerHeight - 200 : 300;
+      const newHeight = isFullscreen ? window.innerHeight - 200 : (useSubplots ? 400 : 300);
       
       uplot.setSize({
         width: newWidth,
@@ -545,21 +775,17 @@
   }
 
   onMount(() => {
-    console.log(`开始加载图表 ${chartName}`);
+    console.log(`开始加载图表 ${chartName}，子图模式: ${useSubplots}`);
     loadUPlot();
-
-    // 监听窗口大小变化
     window.addEventListener("resize", handleResize);
   });
 
   onDestroy(() => {
     if (uplot) {
-      // 清理游标同步订阅
       if ((uplot as any)._cursorUnsubscribe) {
         (uplot as any)._cursorUnsubscribe();
       }
       
-      // 移除事件监听器
       const currentContainer = isFullscreen ? fullscreenChartContainer : chartContainer;
       if (currentContainer) {
         currentContainer.removeEventListener('dblclick', handleDoubleClick);
@@ -588,7 +814,7 @@
           <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
           </svg>
-          {chartName} - 全屏查看
+          {chartName} - 全屏查看 {useSubplots ? '(子图模式)' : '(单图模式)'}
         </h3>
         <button 
           class="text-gray-400 hover:text-gray-200 p-2 rounded-lg hover:bg-gray-700 transition-colors"
@@ -644,8 +870,20 @@
 {:else}
   <!-- 正常模式 -->
   <div class="w-full h-full relative">
-    <!-- 放大缩小按钮 - 右上角悬浮 -->
+    <!-- 控制按钮 - 右上角悬浮 -->
     <div class="absolute top-2 right-2 z-10 flex gap-1">
+      <!-- 子图模式切换按钮 -->
+      <button 
+        class="w-8 h-8 bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded text-gray-300 hover:text-white transition-colors flex items-center justify-center shadow-lg {useSubplots ? 'bg-blue-600 text-white' : ''}"
+        onclick={() => { useSubplots = !useSubplots; initChart(); }}
+        title={useSubplots ? '切换到单图模式' : '切换到子图模式'}
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path>
+        </svg>
+      </button>
+      
+      <!-- 全屏按钮 -->
       <button 
         class="w-8 h-8 bg-gray-800 hover:bg-gray-700 border border-gray-600 rounded text-gray-300 hover:text-white transition-colors flex items-center justify-center shadow-lg"
         onclick={toggleFullscreen}
@@ -657,87 +895,74 @@
       </button>
     </div>
 
-  <!-- 图表容器 -->
-  <div
-    bind:this={chartContainer}
-    class="w-full h-80 bg-gray-900 rounded border border-gray-600 relative"
-    style="min-height: 300px;"
-  >
-    {#if isLoading}
-      <!-- 加载状态 -->
-      <div
-        class="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-900 rounded"
-      >
-        <div class="text-center">
-          <div
-            class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"
-          ></div>
-          <p class="text-sm">加载图表中...</p >
+    <!-- 图表容器 -->
+    <div
+      bind:this={chartContainer}
+      class="w-full bg-gray-900 rounded border border-gray-600 relative"
+      style="min-height: {useSubplots ? '400px' : '300px'}; height: {useSubplots ? '400px' : '300px'};"
+    >
+      {#if isLoading}
+        <!-- 加载状态 -->
+        <div class="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-900 rounded">
+          <div class="text-center">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+            <p class="text-sm">加载图表中...</p>
+          </div>
         </div>
-      </div>
-    {:else if loadError}
-      <!-- 错误状态 -->
-      <div
-        class="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-900 rounded"
-      >
-        <div class="text-center">
-          <div class="text-red-500 text-2xl mb-2">⚠️</div>
-          <p class="text-sm">图表加载失败</p >
-          <button
-            class="mt-2 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded"
-            onclick={() => loadUPlot()}
-          >
-            重试
-          </button>
+      {:else if loadError}
+        <!-- 错误状态 -->
+        <div class="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-900 rounded">
+          <div class="text-center">
+            <div class="text-red-500 text-2xl mb-2">⚠️</div>
+            <p class="text-sm">图表加载失败</p>
+            <button
+              class="mt-2 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded"
+              onclick={() => loadUPlot()}
+            >
+              重试
+            </button>
+          </div>
         </div>
-      </div>
-    {:else if !uplot}
-      <!-- 等待初始化 -->
+      {:else if !uplot}
+        <!-- 等待初始化 -->
+        <div class="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-900 rounded">
+          <div class="text-center">
+            <div class="text-gray-500 text-2xl mb-2">📊</div>
+            <p class="text-sm">准备图表中...</p>
+          </div>
+        </div>
+      {/if}
+    </div>
+    
+    <!-- 自定义Tooltip -->
+    {#if showTooltip}
       <div
-        class="absolute inset-0 flex items-center justify-center text-gray-400 bg-gray-900 rounded"
+        class="absolute z-50 bg-gray-800 border border-gray-600 rounded-lg p-3 shadow-lg pointer-events-none"
+        style="left: {tooltipPosition.x}px; top: {tooltipPosition.y}px; background-color: rgba(31, 41, 55, 0.7); backdrop-filter: blur(4px);"
       >
-        <div class="text-center">
-          <div class="text-gray-500 text-2xl mb-2">📊</div>
-          <p class="text-sm">准备图表中...</p >
+        <!-- 时间显示 -->
+        <div class="text-xs text-gray-300 font-mono mb-2 border-b border-gray-600 pb-1">
+          {tooltipData.time}
+        </div>
+
+        <!-- 曲线数据 -->
+        <div class="space-y-1">
+          {#each tooltipData.values as item}
+            <div class="flex items-center gap-2 text-xs">
+              <!-- 颜色指示器 -->
+              <div class="w-3 h-0.5 rounded" style="background-color: {item.color};"></div>
+              <!-- 参数名称 -->
+              <span class="text-gray-300 flex-1 truncate" title={item.name}>
+                {item.name}
+              </span>
+              <!-- 数值 -->
+              <span class="text-white font-mono">
+                {item.value}
+              </span>
+            </div>
+          {/each}
         </div>
       </div>
     {/if}
-  </div>
-  
-  <!-- 自定义Tooltip - 半透明小框，位置在鼠标左上方，透明度70% -->
-  {#if showTooltip}
-    <div
-      class="absolute z-50 bg-gray-800 border border-gray-600 rounded-lg p-3 shadow-lg pointer-events-none"
-      style="left: {tooltipPosition.x}px; top: {tooltipPosition.y}px; background-color: rgba(31, 41, 55, 0.7); backdrop-filter: blur(4px);"
-    >
-      <!-- 时间显示 -->
-      <div
-        class="text-xs text-gray-300 font-mono mb-2 border-b border-gray-600 pb-1"
-      >
-        {tooltipData.time}
-      </div>
-
-      <!-- 曲线数据 -->
-      <div class="space-y-1">
-        {#each tooltipData.values as item}
-          <div class="flex items-center gap-2 text-xs">
-            <!-- 颜色指示器 -->
-            <div
-              class="w-3 h-0.5 rounded"
-              style="background-color: {item.color};"
-            ></div>
-            <!-- 参数名称 -->
-            <span class="text-gray-300 flex-1 truncate" title={item.name}>
-              {item.name}
-            </span>
-            <!-- 数值 -->
-            <span class="text-white font-mono">
-              {item.value}
-            </span>
-          </div>
-        {/each}
-      </div>
-    </div>
-  {/if}
   </div>
 {/if}
