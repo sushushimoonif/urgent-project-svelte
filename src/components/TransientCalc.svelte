@@ -783,7 +783,6 @@
                         curves={chart.curves}
                         data={chartDataSets.get(chart.id)?.data || []}
                         syncGroup="transient-charts"
-                        useSubplots={true}
                       />
                     </div>
                   </div>
