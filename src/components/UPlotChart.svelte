@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
+  import { writable } from 'svelte/store';
 
   interface Curve {
     name: string;
@@ -11,9 +12,10 @@
     curves: Curve[];
     data: number[][];
     xRange?: number[] | null; // 可选
+    syncGroup?: string; // 新增：同步组标识
   }
 
-  let { chartId, chartName, curves, data, xRange }: Props = $props();
+  let { chartId, chartName, curves, data, xRange, syncGroup = 'default' }: Props = $props();
 
   let chartContainer: HTMLDivElement;
   let fullscreenChartContainer: HTMLDivElement;
@@ -22,6 +24,10 @@
   let isLoading = $state(true);
   let loadError = $state(false);
   let isFullscreen = $state(false);
+  
+  // 游标同步相关状态
+  let cursorSyncStore: any = null;
+  let isUpdatingCursor = $state(false);
   
   // 缩放状态管理
   let originalXRange = $state<[number, number] | null>(null);
@@ -54,6 +60,22 @@
     "#8b5cf6", // 紫色
     "#f97316", // 橙色
   ];
+
+  // 全局游标同步存储 - 按同步组分组
+  const globalCursorStores = new Map<string, any>();
+  
+  // 获取或创建同步组的游标存储
+  function getCursorSyncStore(group: string) {
+    if (!globalCursorStores.has(group)) {
+      globalCursorStores.set(group, writable({
+        idx: null,
+        left: 0,
+        top: 0,
+        sourceChartId: null
+      }));
+    }
+    return globalCursorStores.get(group);
+  }
 
   // 全屏切换函数
   function toggleFullscreen() {
@@ -233,7 +255,7 @@
       cursor: {
         show: true,
         sync: {
-          key: `chart-${chartId}`,
+          key: syncGroup, // 使用同步组作为key
         },
         drag: {
           setScale: false, // 禁用默认的拖拽缩放
@@ -303,6 +325,19 @@
         setCursor: [
           (u: any) => {
             const { left, top, idx } = u.cursor;
+            
+            // 防止循环更新
+            if (isUpdatingCursor) return;
+            
+            // 更新同步存储
+            if (cursorSyncStore && idx !== null && idx !== undefined) {
+              cursorSyncStore.set({
+                idx,
+                left,
+                top,
+                sourceChartId: chartId
+              });
+            }
 
             if (idx !== null && idx !== undefined && data[idx]) {
               // 显示tooltip
@@ -337,9 +372,62 @@
     };
 
     try {
+      // 初始化游标同步
+      cursorSyncStore = getCursorSyncStore(syncGroup);
+      
       // 创建uPlot实例
       const transformedData = transformDataForUPlot(data);
       uplot = new uPlot(opts, transformedData, currentContainer);
+      
+      // 订阅游标同步
+      const unsubscribe = cursorSyncStore.subscribe((syncData: any) => {
+        if (syncData.sourceChartId !== chartId && syncData.idx !== null && uplot) {
+          // 防止循环更新
+          isUpdatingCursor = true;
+          
+          try {
+            // 同步游标位置
+            uplot.setCursor({
+              left: syncData.left,
+              top: syncData.top,
+              idx: syncData.idx
+            });
+            
+            // 更新tooltip显示
+            if (data[syncData.idx]) {
+              showTooltip = true;
+              
+              const rect = uplot.root.getBoundingClientRect();
+              tooltipPosition = {
+                x: syncData.left + rect.left,
+                y: syncData.top + rect.top,
+              };
+              
+              const timeValue = data[syncData.idx][0];
+              const values = curves.map((curve, index) => ({
+                name: curve.name,
+                value: data[syncData.idx][index + 1]?.toFixed(3) || "0.000",
+                color: colors[index % colors.length],
+              }));
+              
+              tooltipData = {
+                time: `时间: ${timeValue.toFixed(3)}s`,
+                values: values,
+              };
+            }
+          } catch (error) {
+            console.error(`图表 ${chartName} 游标同步失败:`, error);
+          } finally {
+            // 延迟重置标志，避免立即触发
+            setTimeout(() => {
+              isUpdatingCursor = false;
+            }, 10);
+          }
+        }
+      });
+      
+      // 保存取消订阅函数，用于清理
+      (uplot as any)._cursorUnsubscribe = unsubscribe;
       
       // 添加双击事件监听器来重置缩放
       currentContainer.addEventListener('dblclick', handleDoubleClick);
@@ -466,6 +554,11 @@
 
   onDestroy(() => {
     if (uplot) {
+      // 清理游标同步订阅
+      if ((uplot as any)._cursorUnsubscribe) {
+        (uplot as any)._cursorUnsubscribe();
+      }
+      
       // 移除事件监听器
       const currentContainer = isFullscreen ? fullscreenChartContainer : chartContainer;
       if (currentContainer) {

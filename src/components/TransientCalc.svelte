@@ -782,6 +782,7 @@
                         chartName={chart.name}
                         curves={chart.curves}
                         data={chartDataSets.get(chart.id)?.data || []}
+                        syncGroup="transient-charts"
                       />
                     </div>
                   </div>
